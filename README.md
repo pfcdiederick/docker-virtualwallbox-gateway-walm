@@ -74,15 +74,27 @@ the WBM (`/wbm/...`). Also reachable directly at `http://<host>:3090/` (without 
  PC browser ──http(s)://<pfc-ip>/walmgateway──▶ lighttpd (80/443) ──127.0.0.1:3090──▶ vwb-gateway
 ```
 
-`deploy/deploy.sh` (see *Build & deploy*) sets this up automatically. Alone, e.g. after a
-firmware update (it replaces `/etc/lighttpd`):
+**Set up automatically at every container start**, before the gateway starts (same approach as
+the kbus-gateway): [entrypoint.sh](deploy/entrypoint.sh) reads the dashboard port from
+`gateway.toml` and runs [walmgateway-check.sh](deploy/walmgateway-check.sh) in the controller's
+namespaces (`nsenter`; the container runs with `--pid host` and the capabilities `SYS_ADMIN`,
+`SYS_PTRACE`, `SYS_CHROOT`, see `deploy/deploy.sh`). The check:
+- does nothing when `/etc/lighttpd/.../walmgateway.conf` is in place (lighttpd is not touched);
+- missing or different (e.g. **after a firmware update**, which replaces `/etc/lighttpd` while Docker
+  and the container in `/home` stay) → installs it, checks the whole config with `lighttpd -tt`,
+  restarts lighttpd; a rejected config restores the old state, so the WBM keeps working;
+- uses `apps.confd/` when the firmware has it, else `fastcgi.confd/` (firmware 04.04 on the CC100
+  has no `apps.confd`, but includes `fastcgi.confd/*.conf`);
+- restarts lighttpd in lighttpd's own cgroups, so stopping the container never stops the WBM.
+
+The result is in `docker logs vwb-gateway` (`[dashboard] walmgateway: ...`) and in the syslog
+(`walmgateway: ...`). `-e WALMGW_DASHBOARD_CHECK=0` switches it off; without `--pid host` it is
+skipped and the dashboard stays on its own port. The gateway strips `/walmgateway` itself.
+Manually (e.g. for a container started by hand without `--pid host`):
 ```bash
-deploy/install-lighttpd.sh 192.168.178.222          # -> /etc/lighttpd/fastcgi.confd/walmgateway.conf
-deploy/install-lighttpd.sh 192.168.178.222 --remove
+deploy/install-lighttpd.sh 192.168.178.222          # install
+deploy/install-lighttpd.sh 192.168.178.222 --remove # remove
 ```
-The script checks the whole config with `lighttpd -tt` before restarting lighttpd and removes a
-rejected config again, so the WBM keeps working. Firmware 04.04 has no `apps.confd`; it includes
-`fastcgi.confd/*.conf`, so the file goes there. The gateway strips `/walmgateway` itself.
 
 | Tab | Pages |
 |---|---|
@@ -129,27 +141,28 @@ deploy/deploy.sh 192.168.178.222 --rollback   # back to the previous container
    overwritten (charger profile and login stay); other folder: `VWB_DIR=/home/vwb deploy/deploy.sh ...`;
 3. replaces the container (options below); the old one stays stopped as `vwb-gateway-prev`. When the
    new one does not keep running for 8 s, the old one is started again;
-4. installs the lighttpd proxy for `/walmgateway` (checked with `lighttpd -tt`, see *Dashboard*);
+4. the new container sets up `/walmgateway` itself at its start (see *Dashboard*), also after
+   every reboot and firmware update;
 5. checks `http://<controller>/walmgateway/api/status` and removes images no container uses.
 
 Manual steps, for reference:
 
 The Dockerfile cross-compiles on the build PC (native, no QEMU) to a static armv7 musl
-binary and ships it on `scratch` — the whole image is ~740 KB. Never compile on the CC100
+binary and ships it on a static busybox (for the start script) — the whole image is ~2.2 MB. Never compile on the CC100
 (1 core, ~500 MB RAM, live controller).
 
 ```bash
 # on the build PC
-docker buildx build --platform linux/arm/v7 -t vwb-gateway:0.11 --load .
-docker save vwb-gateway:0.11 | ssh root@<cc100> docker load
+docker buildx build --platform linux/arm/v7 -t vwb-gateway:0.12 --load .
+docker save vwb-gateway:0.12 | ssh root@<cc100> docker load
 
 # on the CC100 (config dir copied to e.g. /root/vwb/config)
 docker run -d --name vwb-gateway --restart unless-stopped --network host \
+  --pid host --cap-add SYS_ADMIN --cap-add SYS_PTRACE --cap-add SYS_CHROOT \
   --memory 32m --cpus 0.3 --log-opt max-size=1m --log-opt max-file=2 \
-  -v /root/vwb/config:/config vwb-gateway:0.11   # writable: dashboard upload
+  -v /root/vwb/config:/config vwb-gateway:0.12   # writable: dashboard upload
 ```
-Note: extra `docker run` arguments are appended after the built-in config path and are ignored;
-to use another config file, override with `--entrypoint`.
+Another config file: append its path to `docker run ... vwb-gateway:<version> /config/other.toml`.
 Edit the charger profile (`config/profiles/alfen_eve_pro.toml`) → set `host` (and `port`) to the Alfen's address before starting.
 
 ### Running next to Load Management on the CC100

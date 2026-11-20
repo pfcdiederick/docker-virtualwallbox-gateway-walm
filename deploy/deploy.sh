@@ -11,8 +11,9 @@
 #      project when missing; an existing one is NEVER overwritten (profile, login stay)
 #   3. replace the container; the old one is kept stopped as vwb-gateway-prev. When the new one
 #      does not keep running, the old one is started again automatically
-#   4. lighttpd proxy http(s)://<controller>/walmgateway/ -> dashboard port (deploy/install-lighttpd.sh,
-#      checked with lighttpd -tt, a rejected config is removed again)
+#   4. the container itself sets up http(s)://<controller>/walmgateway/ at every start
+#      (deploy/entrypoint.sh + walmgateway-check.sh: lighttpd -tt, a rejected config is removed
+#      again), so it also comes back by itself after a firmware update
 #   5. check http://<controller>/walmgateway/api/status, remove unused older images
 #
 # Needs: ssh root@<controller> with a key (ssh-copy-id root@<controller>), docker buildx.
@@ -24,7 +25,11 @@ VERSION=$(tr -d ' \n' < VERSION)
 IMAGE=vwb-gateway:$VERSION
 VWB_DIR=${VWB_DIR:-/root/vwb}
 SSH="ssh -o BatchMode=yes -o ConnectTimeout=5 root@$PFC"
-RUN_OPTS="--restart unless-stopped --network host --memory 32m --cpus 0.3 --log-opt max-size=1m --log-opt max-file=2"
+# --pid host + capabilities: the start script sets up /walmgateway in the controller's lighttpd
+# (nsenter into the controller's namespaces) at every start, e.g. again after a firmware update
+RUN_OPTS="--restart unless-stopped --network host --pid host --cap-add SYS_ADMIN --cap-add SYS_PTRACE --cap-add SYS_CHROOT
+          --memory 32m --cpus 0.3 --log-opt max-size=1m --log-opt max-file=2"
+RUN_OPTS=$(echo $RUN_OPTS)
 
 say() { echo ">>> $*"; }
 $SSH true || { echo "no ssh access to root@$PFC (ssh-copy-id root@$PFC)"; exit 1; }
@@ -54,9 +59,6 @@ else
     say "config: creating $VWB_DIR/config from config/ (edit the charger profile afterwards)"
     tar -C . -cf - config | $SSH "mkdir -p $VWB_DIR && tar -C $VWB_DIR -xf - && chmod 600 $VWB_DIR/config/gateway.toml"
 fi
-# dashboard port from [dashboard] bind (lighttpd forwards to it)
-PORT=$($SSH "sed -n '/^\[dashboard\]/,/^\[/{s/^bind *= *\"[^\"]*:\([0-9]*\)\".*/\1/p}' $VWB_DIR/config/gateway.toml" | head -n1)
-PORT=${PORT:-3090}
 
 # ---- 3. container ----------------------------------------------------------------------
 say "starting container vwb-gateway ($IMAGE)"
@@ -76,11 +78,9 @@ $SSH "set -e
         fi
         exit 1
     fi
-    docker logs vwb-gateway 2>&1 | head -n 6 | sed 's/^/    /'"
+    docker logs vwb-gateway 2>&1 | head -n 8 | sed 's/^/    /'"
 
-# ---- 4. lighttpd: /walmgateway ----------------------------------------------------------
-say "lighttpd: /walmgateway -> 127.0.0.1:$PORT"
-deploy/install-lighttpd.sh "$PFC" "$PORT" | sed 's/^/    /'
+# ---- 4. /walmgateway: set up by the container at its start (see the log lines above) ------
 
 # ---- 5. check, clean up ----------------------------------------------------------------
 code=$(curl -s -o /dev/null -m 5 -w '%{http_code}' "http://$PFC/walmgateway/api/status" || true)
