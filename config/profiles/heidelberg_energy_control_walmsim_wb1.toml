@@ -1,0 +1,70 @@
+# ───────────────────────────────────────────────────────────────────────────
+# Downstream charger profile: simulated Heidelberg Energy Control (Modbus TCP slave)
+#
+# This file IS the "MODBUS template": it declares which charger is connected and
+# how to read/write it. To support a different charger, copy this file and change
+# the register addresses, no code changes needed.
+#
+# Register map taken from the CODESYS program prgWallBox_1 (virtual charger,
+# derived from App_WALMSim, checked on 2026-11-20). The program exposes the
+# Heidelberg Energy Control registers through WagoAppPlcModbus.FbMbSimpleServerTcp,
+# where the array index equals the Modbus address, so the addresses are used 1:1.
+# All values are single 16-bit registers (WORD), not float32 as on the Alfen.
+# Measurements are INPUT registers (FC04), the setpoint is a HOLDING register.
+# Gateway >= 0.9:
+#   - the state is a number here (u16), not a string as on the Alfen. The
+#     [status_map] keys are therefore "2".."9".
+#   - "scale" on write_current is a multiplication (16 A x 10 -> 160 = 16.0 A).
+#   - registers 5..18 are read in one FC04 request.
+# ───────────────────────────────────────────────────────────────────────────
+
+name = "Heidelberg Energy Control, virtual charger (Modbus TCP)"
+
+# ---- where the charger lives (Modbus TCP) ----
+host = "127.0.0.1"         # localhost: the virtual charger runs on the same controller
+port = 1004                # Modbus TCP port of the virtual charger (prgWallBox_1)
+unit_id = 1                # bUnitId := 1 in prgWallBox_1
+poll_interval_ms = 1000
+timeout_ms = 1000
+
+# ---- values READ from the wallbox and exposed to Load Management ----
+# type: u16|s16|u32|s32|f32|f64|string · scale applied after decode · fc 3=holding 4=input
+# word_order_lo_hi = false (default) means high word first (reg 17 = high, reg 18 = low).
+
+read.voltage_l1   = { address = 10, type = "u16", scale = 1.0,   fc = 4 }  # V         -> reg 222-223
+read.voltage_l2   = { address = 11, type = "u16", scale = 1.0,   fc = 4 }  # V         -> reg 224-225
+read.voltage_l3   = { address = 12, type = "u16", scale = 1.0,   fc = 4 }  # V         -> reg 226-227
+
+read.current_l1   = { address = 6,  type = "u16", scale = 100.0, fc = 4 }  # 0.1 A->mA -> reg 212-213
+read.current_l2   = { address = 7,  type = "u16", scale = 100.0, fc = 4 }  # 0.1 A->mA -> reg 214-215
+read.current_l3   = { address = 8,  type = "u16", scale = 100.0, fc = 4 }  # 0.1 A->mA -> reg 216-217
+
+read.power_total  = { address = 14, type = "u16", scale = 1.0,   fc = 4 }  # VA (PF = 1) -> reg 220-221
+read.energy_total = { address = 17, type = "u32", scale = 1.0,   fc = 4 }  # VAh       -> reg 218-219
+
+# Charging state as a number, e.g. 3 = no vehicle, 5 = plugged in, 7 = charging, 9 = error
+read.mode3_state  = { address = 5,  type = "u16", scale = 1.0,   fc = 4 }
+
+# Optional (present in the virtual charger):
+# read.pcb_temperature        = { address = 9,   type = "s16", scale = 0.1, fc = 4 }  # 0.1 degC -> degC
+# read.ext_lock_state         = { address = 13,  type = "u16", scale = 1.0, fc = 4 }  # 0 = locked, 1 = unlocked
+# read.hw_max_current         = { address = 100, type = "u16", scale = 1.0, fc = 4 }  # A (16)
+# read.hw_min_current         = { address = 101, type = "u16", scale = 1.0, fc = 4 }  # A (6)
+
+# Not available: there is no "actual applied current" register. Reg 261 can be
+# read back with FC03, but that returns the commanded setpoint:
+# read.actual_applied_current = { address = 261, type = "u16", scale = 0.1, fc = 3 }  # 0.1 A -> A
+
+# ---- current setpoint WRITTEN to the wallbox (from HEMS_CURRENT_LIMIT, reg 1000, A) ----
+write_current     = { address = 261, type = "u16", scale = 10.0 }    # Maximal current command (A -> 0.1 A)
+
+# ---- map Heidelberg charging states to logical charge-point states ----
+# logical: available|preparing|charging|suspended_evse|suspended_ev|finishing|faulted|reserved|unavailable
+[status_map]
+"2" = "available"        # A1: no vehicle, charging not allowed
+"3" = "available"        # A2: no vehicle, charging allowed (start value)
+"4" = "preparing"        # B1: vehicle plugged, no charging request, charging not allowed
+"5" = "preparing"        # B2: vehicle plugged, no charging request, charging allowed
+"6" = "suspended_evse"   # C1: charging request, charging not allowed
+"7" = "charging"         # C2: charging request, charging allowed
+"9" = "faulted"          # error, set 60 s after a communication error

@@ -1,0 +1,25 @@
+[package]
+name = "vwb-gateway"
+version = "0.1.0"
+edition = "2021"
+description = "WAGO Virtual Wallbox gateway: presents a downstream charger (e.g. Alfen) to WAGO/energielenker Load Management as a Mennekes ECU Modbus TCP server."
+
+[[bin]]
+name = "vwb-gateway"
+path = "src/main.rs"
+
+[dependencies]
+tokio = { version = "1.40", features = ["rt-multi-thread", "net", "io-util", "sync", "time", "macros", "signal"] }
+serde = { version = "1", features = ["derive"] }
+toml = "0.8"
+anyhow = "1"
+serde_json = "1"
+pbkdf2 = { version = "0.12", default-features = false, features = ["hmac"] }
+sha2 = { version = "0.10", default-features = false }
+
+[profile.release]
+opt-level = "z"     # optimize for size
+lto = true
+codegen-units = 1
+panic = "abort"
+strip = true

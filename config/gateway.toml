@@ -1,0 +1,34 @@
+# ───────────────────────────────────────────────────────────────────────────
+# WAGO Virtual Wallbox gateway — main configuration
+#
+#   Load Management ──Modbus master──▶ [this gateway] ──Modbus client──▶ real charger
+#
+# In Load Management: add a charging point of type "WAGO Virtual Wallbox (Modbus)"
+# and set its IP address to THIS gateway's host, port 502, Modbus slave ID 1.
+# ───────────────────────────────────────────────────────────────────────────
+
+[server]
+# Mennekes-ECU side that Load Management connects to.
+bind = "0.0.0.0:5020"     # :502 on the CC100 is taken by codesys3; set port 5020 in LM
+unit_id = 0                # 0 = answer any unit id (like a real ECU); or pin to 1
+firmware_version = "5.22"  # register 100-101
+protocol_version = "0.9c"  # register 120-121
+chargepoint_model = "CC612" # register 142-151
+operator_current_limit = 16 # register 134 (A) — installation max for this Alfen
+minimum_current_limit = 6   # register 712 (A)
+default_hems_current_limit = 32 # register 1000 at start (A)
+
+[downstream]
+# Which charger is connected behind this gateway.
+profile = "/config/profiles/alfen_eve_pro.toml"   # path inside the container
+# The charger's IP address + port are set in the charger profile (host / port),
+# so they can be changed via the dashboard upload. Optional fallback, used only
+# when the profile has no host/port:
+# host = "192.168.178.108"
+# port = 502
+
+[dashboard]
+# Status page + config Download/Upload/Restart: http://<host>:3090  (remove this section to disable)
+bind = "0.0.0.0:3090"
+# Download / Upload / Restart need the dashboard login: admin / wago until changed on
+# Configuration > Login (stored in dashboard-login.toml in this folder, password hashed).

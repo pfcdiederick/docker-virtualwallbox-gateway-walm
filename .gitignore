@@ -1,0 +1,11 @@
+# Build output
+target/
+
+# Reference documents (third-party / internal): not in the repository
+Information/
+
+# Local test leftovers and dashboard login (password hash, created on the controller)
+/new.toml
+/nohost.toml
+dashboard-login.toml
+*.bak

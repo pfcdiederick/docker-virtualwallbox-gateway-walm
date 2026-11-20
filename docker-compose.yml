@@ -1,0 +1,15 @@
+services:
+  vwb-gateway:
+    build: .
+    platform: linux/arm/v7   # binary is armv7 (CC100); run this compose file on the CC100
+    image: vwb-gateway:0.11
+    container_name: vwb-gateway
+    restart: unless-stopped
+    # Host networking so the gateway can reach the downstream charger directly
+    # and expose :502 on the host IP that Load Management points at.
+    network_mode: host
+    volumes:
+      - ./config:/config        # writable: dashboard config upload
+    # If you prefer bridge networking instead of host, comment network_mode out and:
+    # ports:
+    #   - "502:502"

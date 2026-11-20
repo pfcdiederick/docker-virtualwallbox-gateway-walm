@@ -1,0 +1,66 @@
+# ───────────────────────────────────────────────────────────────────────────
+# Downstream charger profile: Alfen Eve Single/Double Pro-Line (Modbus TCP slave)
+#
+# This file IS the "MODBUS template": it declares which charger is connected and
+# how to read/write it. To support a different charger, copy this file and change
+# the register addresses — no code changes needed.
+#
+# Probed read-only on Alfen NLLPIE00002034, FW 6.6.2-4312 (2026-11-19): 306-310 V,
+# 320-324 A, 344 W, 374 Wh, 1201 state, 1206 applied current, 1210 setpoint all read plausibly.
+# ⚠ Still verify against the Alfen "Modbus Slave TCP/IP" document
+#   for your firmware. The values here follow the commonly used Alfen map
+#   (big-endian float32 / float64, FC03). On the charger you must first enable
+#   "Active load balancing / Modbus TCP" (data source = Energy Management System),
+#   otherwise writing the current setpoint has no effect.
+# ───────────────────────────────────────────────────────────────────────────
+
+name = "Alfen Eve Pro-Line (Modbus TCP)"
+
+# ---- where the charger lives (Modbus TCP) ----
+host = "192.168.178.108"   # IP address of the Alfen (NLLPIE00002034)
+port = 502                 # Modbus TCP port of the Alfen
+unit_id = 1              # Alfen socket 1 = slave id 1 (socket 2 = 2)
+poll_interval_ms = 1000
+timeout_ms = 1000
+
+# ---- values READ from the Alfen and exposed to Load Management ----
+# type: u16|s16|u32|s32|f32|f64|string · scale applied after decode · fc 3=holding 4=input
+# word_order_lo_hi = false (default) means high word first (Alfen default).
+
+read.voltage_l1   = { address = 306, type = "f32", scale = 1.0 }     # V   -> reg 222-223
+read.voltage_l2   = { address = 308, type = "f32", scale = 1.0 }     # V   -> reg 224-225
+read.voltage_l3   = { address = 310, type = "f32", scale = 1.0 }     # V   -> reg 226-227
+
+read.current_l1   = { address = 320, type = "f32", scale = 1000.0 }  # A->mA -> reg 212-213
+read.current_l2   = { address = 322, type = "f32", scale = 1000.0 }  # A->mA -> reg 214-215
+read.current_l3   = { address = 324, type = "f32", scale = 1000.0 }  # A->mA -> reg 216-217
+
+read.power_total  = { address = 344, type = "f32", scale = 1.0 }     # W   -> reg 220-221
+read.energy_total = { address = 374, type = "f64", scale = 1.0 }     # Wh  -> reg 218-219
+
+# Mode-3 state string (CP state), e.g. "A","B1","B2","C1","C2","D1","D2","E","F"
+read.mode3_state  = { address = 1201, type = "string", length = 5 }
+
+# Optional (uncomment + verify addresses if your firmware exposes them):
+# read.power_l1               = { address = 338, type = "f32", scale = 1.0 }    # W  -> reg 206-207
+# read.power_l2               = { address = 340, type = "f32", scale = 1.0 }    # W  -> reg 208-209
+# read.power_l3               = { address = 342, type = "f32", scale = 1.0 }    # W  -> reg 210-211
+
+# Verified readable on NLLPIE00002034 (FW 6.6.2-4312), 2026-11-19:
+read.actual_applied_current = { address = 1206, type = "f32", scale = 1.0 }    # A  -> reg 706
+
+# ---- current setpoint WRITTEN to the Alfen (from HEMS_CURRENT_LIMIT, reg 1000, A) ----
+write_current     = { address = 1210, type = "f32", scale = 1.0 }    # Modbus Slave Max Current (A)
+
+# ---- map Alfen Mode-3 states to logical charge-point states ----
+# logical: available|preparing|charging|suspended_evse|suspended_ev|finishing|faulted|reserved|unavailable
+[status_map]
+"A"  = "available"
+"B1" = "preparing"
+"B2" = "preparing"
+"C1" = "suspended_evse"
+"C2" = "charging"
+"D1" = "suspended_evse"
+"D2" = "charging"
+"E"  = "faulted"
+"F"  = "faulted"

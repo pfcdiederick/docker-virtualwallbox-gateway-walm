@@ -1,0 +1,503 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>WALM Gateway</title>
+<link rel="icon" href="/wbm/images/favicon.png">
+<style>
+/* Same layout as the kbus-manager, i.e. the controller's Web-based Management (WBM).
+   Fonts, logo and favicon come from the controller's own WBM (/wbm/...), which is on the
+   same origin when the page is opened at http(s)://<controller>/walmgateway/. Opened
+   directly on port 3090 they are missing: system fonts and a text logo instead. */
+@font-face { font-family: "Open Sans"; font-weight: 300; src: url(/wbm/fonts/open-sans-latin-300.woff2) format("woff2"); }
+@font-face { font-family: "Open Sans"; font-weight: 400; src: url(/wbm/fonts/open-sans-latin-400.woff2) format("woff2"); }
+@font-face { font-family: "Open Sans"; font-weight: 400; font-style: italic; src: url(/wbm/fonts/open-sans-latin-400italic.woff2) format("woff2"); }
+@font-face { font-family: "Open Sans"; font-weight: 600; src: url(/wbm/fonts/open-sans-latin-600.woff2) format("woff2"); }
+@font-face { font-family: "Open Sans"; font-weight: 700; src: url(/wbm/fonts/open-sans-latin-700.woff2) format("woff2"); }
+:root {
+  --text: rgb(33, 33, 33); --line: rgb(204, 204, 204); --panel: rgb(246, 246, 246); --bg: rgb(254, 254, 254);
+  --bar: rgb(252, 252, 252); --green: rgb(139, 182, 59); --green-dark: rgb(113, 149, 49);
+  --green-hover: rgb(124, 163, 53); --green-active: rgb(110, 143, 47);
+  --red: rgb(225, 89, 64); --red-dark: rgb(189, 56, 33); --blue: rgb(105, 173, 219); --grey: rgb(164, 164, 164);
+  --amber: rgb(176, 120, 0);
+}
+* { box-sizing: border-box; }
+html, body { height: 100%; }
+body { margin: 0; background: var(--bg); color: var(--text); font: 13px "Open Sans", "Segoe UI", Arial, sans-serif; }
+a { color: var(--green-dark); }
+#frame { display: flex; flex-direction: column; height: 100vh; min-width: 720px; }
+
+/* ---- header: logo, tab menu, action bar ---- */
+#main-header { position: relative; flex: none; height: 61px; background: var(--bar); border-bottom: 1px solid var(--line);
+  display: flex; align-items: flex-end; padding-left: 160px; }
+#logo { position: absolute; left: 34px; top: 14px; height: 28px; display: flex; align-items: center; }
+#logo img { height: 28px; display: block; }
+#logo .text { display: none; font-weight: 700; font-size: 20px; color: var(--green); letter-spacing: 1px; }
+#logo.noimg img { display: none; } #logo.noimg .text { display: block; }
+#main-menu { list-style: none; margin: 0; padding: 0; display: flex; align-items: flex-end; height: 61px; position: relative; z-index: 0; }
+#main-menu .tab-item { position: relative; margin: 26px -6px -1px 0; height: 34px; width: 126px; }
+#main-menu .tab-item::before { content: ""; position: absolute; inset: 0 0 0 0; z-index: -1; background: var(--panel);
+  border: 1px solid var(--line); border-bottom: none; border-radius: 14px 14px 0 0;
+  transform: perspective(36px) rotateX(5deg); transform-origin: bottom; }
+#main-menu .tab-item a { display: block; height: 34px; padding: 8px 10px 0; text-align: center; color: var(--text);
+  text-decoration: none; font-size: 14px; font-weight: 300; cursor: pointer; user-select: none; }
+#main-menu .tab-item.active { z-index: 1; width: 146px; height: 36px; }
+#main-menu .tab-item.active::before { background: var(--bg); box-shadow: rgba(139, 182, 59, 0.5) 0 34px 85px 8px; }
+#main-menu .tab-item.active a { font-weight: 400; height: 36px; }
+#action-bar { list-style: none; margin: 0 0 0 auto; padding: 0 8px 4px 0; display: flex; align-self: center; gap: 12px; }
+#action-bar li { display: flex; flex-direction: column; align-items: center; width: 52px; }
+#action-bar a { display: flex; align-items: center; justify-content: center; width: 30px; height: 30px; border-radius: 50%;
+  border: 1px solid var(--line); background: var(--bg); color: var(--text); cursor: pointer; }
+#action-bar a:hover { background: rgba(139, 182, 59, 0.1); }
+#action-bar svg { width: 16px; height: 16px; }
+#action-bar label { font-size: 11px; margin-top: 2px; }
+
+/* ---- content: sub menu + page ---- */
+#main-content { flex: 1; display: flex; min-height: 0; background: var(--bg); }
+.sub-menu { list-style: none; margin: 0; padding: 17px 0 0; width: 240px; flex: none; border-right: 1px solid var(--line); overflow-y: auto; }
+.sub-menu li { position: relative; border-top: 1px solid var(--line); padding: 0 17px; }
+.sub-menu li:last-child { border-bottom: 1px solid var(--line); }
+.sub-menu li a { display: flex; align-items: center; height: 52px; color: var(--text); text-decoration: none; cursor: pointer; }
+.sub-menu li.active { box-shadow: rgba(139, 182, 59, 0.05) 0 0 51px 0; }
+.sub-menu li.active::before { content: ""; position: absolute; left: 0; top: -1px; bottom: -1px; width: 4px; background: var(--green); }
+.sub-menu li.active a { font-weight: 600; }
+.sub-content { flex: 1; overflow-y: auto; padding: 0 17px 34px 34px; }
+h2.page { font-size: 23px; font-weight: 300; margin: 17px 0; }
+.wbm-page { display: none; } .wbm-page.active { display: block; }
+
+/* notes and messages */
+p.note, p.error, p.success { position: relative; margin: 17px 0; padding: 8px 10px 8px 28px; border: 1px solid; font-style: italic; max-width: 1094px; white-space: pre-wrap; }
+p.note { border-color: var(--blue); background: rgba(105, 173, 219, 0.05); }
+p.error { border-color: var(--red); background: rgba(225, 89, 64, 0.05); }
+p.success { border-color: var(--green); background: rgba(139, 182, 59, 0.06); }
+p.note::before, p.error::before, p.success::before { position: absolute; left: 9px; top: 10px; width: 12px; height: 12px; border-radius: 50%;
+  color: #fff; font: 700 9px/12px Arial, sans-serif; text-align: center; font-style: normal; }
+p.note::before { content: "i"; background: var(--blue); }
+p.error::before { content: "!"; background: var(--red); }
+p.success::before { content: "\2713"; background: var(--green); }
+#msg:empty { display: none; }
+
+/* collapsible forms (panels) */
+.form { border: 1px solid var(--line); border-radius: 2px; margin: 17px 0; width: 480px; max-width: 100%; }
+.form.wide { width: auto; max-width: 1094px; }
+.form > span.title { position: relative; display: block; height: 34px; line-height: 34px; padding: 0 30px 0 9px;
+  background: var(--panel); font-size: 15px; cursor: pointer; user-select: none; }
+.form > span.title::after { content: ""; position: absolute; right: 14px; top: 15px; width: 5px; height: 5px;
+  border-left: 1.5px solid var(--text); border-top: 1.5px solid var(--text); transform: rotate(45deg); }
+.form.collapsed > span.title::after { top: 12px; transform: rotate(225deg); }
+.form.collapsed > .body { display: none; }
+.form > .body { padding: 0 0 9px; }
+.field { display: flex; align-items: center; padding: 9px; min-height: 52px; }
+.field > label { flex: none; width: 173px; padding-right: 17px; font-weight: 600; }
+.field > .control { flex: 1; min-width: 0; overflow-wrap: anywhere; }
+.field > .control.value { font-variant-numeric: tabular-nums; }
+.buttons { display: flex; justify-content: flex-end; gap: 9px; padding: 9px; }
+.ok-text { color: var(--green-dark); } .bad-text { color: var(--red-dark); font-weight: 600; } .warn-text { color: var(--amber); font-weight: 600; }
+.ok-text::before { content: "\2713  "; color: var(--green); } .bad-text::before { content: "\2715  "; }
+.big { font-size: 23px; font-weight: 300; font-variant-numeric: tabular-nums; }
+
+/* inputs and buttons */
+input[type=text], input[type=password] { height: 34px; width: 100%; padding: 0 8.5px; border: 1px solid var(--line); border-radius: 2px; background: #fff;
+  color: #000; font: 13px "Open Sans", "Segoe UI", Arial, sans-serif; outline: none; }
+input:focus { border-color: var(--green); }
+button { display: inline-block; min-width: 102px; height: 34px; padding: 1px 10px; background: #fff; border: 1px solid var(--green-dark);
+  border-radius: 2px; color: var(--green-dark); font: 13px "Open Sans", "Segoe UI", Arial, sans-serif; cursor: pointer; outline: none; }
+button:hover { background: rgba(139, 182, 59, 0.1); } button:active { background: rgba(139, 182, 59, 0.2); }
+button.action { background: var(--green); color: #fff; border-color: var(--green-dark); }
+button.action:hover { background: var(--green-hover); } button.action:active { background: var(--green-active); }
+button.assertive { border-color: var(--red-dark); color: var(--red-dark); }
+button.assertive:hover { background: rgba(225, 89, 64, 0.1); }
+button:disabled { cursor: default; border-color: var(--grey); color: var(--grey); background: #fff; }
+
+/* tables */
+table.grid { border-collapse: collapse; width: 100%; }
+table.grid th, table.grid td { text-align: left; padding: 0 9px; height: 34px; border-bottom: 1px solid var(--line); vertical-align: middle; }
+table.grid th { font-weight: 600; background: var(--panel); white-space: nowrap; }
+table.grid td.num, table.grid th.num { text-align: right; font-variant-numeric: tabular-nums; }
+table.grid tr:last-child td { border-bottom: none; }
+pre.file { margin: 0; padding: 9px; max-height: 520px; overflow: auto; font: 12px/1.45 Consolas, "DejaVu Sans Mono", monospace; white-space: pre; }
+
+/* ---- status area (bottom bar) ---- */
+#status-area { flex: none; height: 50px; background: var(--bar); border-top: 1px solid var(--line);
+  display: flex; align-items: center; padding: 0 17px; gap: 17px; }
+#clock { line-height: 18px; min-width: 70px; }
+.led-table { display: flex; }
+.led-item { text-align: center; text-transform: uppercase; font-size: 11px; cursor: default; min-width: 40px; }
+.led { margin: 0 9px; width: 13px; height: 13px; border-radius: 50%; border: 1px solid rgb(120, 120, 120); background: rgb(230, 230, 230); }
+.led.green { background: rgb(185, 214, 129); } .led.red { background: rgb(232, 127, 108); }
+.led.yellow { background: rgb(238, 196, 58); }
+#status-text { margin-left: auto; color: rgb(120, 120, 120); font-size: 11px; }
+#login-btn.on { border-color: var(--green-dark); color: var(--green-dark); background: rgba(139, 182, 59, 0.15); }
+/* functions that need the login: only shown while logged in */
+body:not(.logged-in) .auth-only { display: none !important; }
+body.logged-in .anon-only { display: none !important; }
+
+/* login dialog */
+#login-dlg { position: fixed; inset: 0; background: rgba(0, 0, 0, .35); display: none; align-items: center; justify-content: center; z-index: 50; }
+#login-dlg.open { display: flex; }
+#login-dlg form { background: #fff; padding: 18px 22px; width: 320px; max-width: calc(100% - 32px); box-shadow: 0 4px 18px rgba(0, 0, 0, .3); }
+#login-dlg h3 { margin: 0 0 6px; } #login-dlg p { margin: 0 0 12px; color: rgb(100, 100, 100); font-size: 12px; }
+#login-dlg label { display: block; margin: 8px 0 3px; }
+#login-dlg .buttons { padding: 0; margin-top: 14px; }
+#login-err { color: rgb(200, 60, 40); min-height: 1em; margin-top: 8px; font-size: 12px; }
+
+@media (max-width: 900px) {
+  #main-header { padding-left: 120px; } #logo { left: 12px; }
+  #main-menu .tab-item { width: 92px; } #main-menu .tab-item.active { width: 108px; }
+  .sub-menu { width: 170px; }
+  #action-bar label { display: none; }
+}
+</style>
+</head>
+<body>
+<div id="frame">
+  <div id="main-header">
+    <div id="logo"><img src="/wbm/images/wago-logo.svg" alt="" onerror="this.parentNode.classList.add('noimg')"><span class="text">WAGO</span></div>
+    <ul id="main-menu"></ul>
+    <ul id="action-bar">
+      <li><a id="login-btn" role="button" tabindex="0" title="Log in"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M19.14 12.94c.04-.3.06-.61.06-.94 0-.32-.02-.64-.07-.94l2.03-1.58a.49.49 0 0 0 .12-.61l-1.92-3.32a.488.488 0 0 0-.59-.22l-2.39.96c-.5-.38-1.03-.7-1.62-.94l-.36-2.54a.484.484 0 0 0-.48-.41h-3.84c-.24 0-.43.17-.47.41l-.36 2.54c-.59.24-1.13.57-1.62.94l-2.39-.96c-.22-.08-.47 0-.59.22L2.74 8.87c-.12.21-.08.47.12.61l2.03 1.58c-.05.3-.09.63-.09.94s.02.64.07.94l-2.03 1.58a.49.49 0 0 0-.12.61l1.92 3.32c.12.22.37.29.59.22l2.39-.96c.5.38 1.03.7 1.62.94l.36 2.54c.05.24.24.41.48.41h3.84c.24 0 .44-.17.47-.41l.36-2.54c.59-.24 1.13-.56 1.62-.94l2.39.96c.22.08.47 0 .59-.22l1.92-3.32c.12-.22.07-.47-.12-.61l-2.01-1.58zM12 15.6c-1.98 0-3.6-1.62-3.6-3.6s1.62-3.6 3.6-3.6 3.6 1.62 3.6 3.6-1.62 3.6-3.6 3.6z"/></svg></a>
+        <label id="login-label">Login</label></li>
+      <li><a id="walm-link" href="/" target="_blank" rel="noopener" title="WAGO Load Management">
+        <svg viewBox="0 0 24 24" fill="currentColor"><path d="M7 2v11h3v9l7-12h-4l4-8z"/></svg></a>
+        <label>WALM</label></li>
+      <li><a id="wbm-link" href="/wbm/" target="_blank" rel="noopener" title="Web-based Management of the controller">
+        <svg viewBox="0 0 24 24" fill="currentColor"><path d="M19 19H5V5h7V3H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14c1.1 0 2-.9 2-2v-7h-2v7zM14 3v2h3.59l-9.83 9.83 1.41 1.41L19 6.41V10h2V3h-7z"/></svg></a>
+        <label>WBM</label></li>
+    </ul>
+  </div>
+
+  <div id="main-content">
+    <ul class="sub-menu" id="sub-menu"></ul>
+    <div class="sub-content">
+      <p id="msg"></p>
+
+      <!-- Status / Charge Point -->
+      <div class="wbm-page" id="page-status-cp">
+        <h2 class="page">Charge Point</h2>
+        <p class="note">What Load Management sees: the charger translated to the WAGO Virtual Wallbox register map.</p>
+        <div class="form collapsible"><span class="title">Charge Point</span><div class="body">
+          <div class="field"><label>State</label><div class="control big" id="cp-state">–</div></div>
+          <div class="field"><label>Vehicle</label><div class="control" id="cp-veh">–</div></div>
+          <div class="field"><label>Availability (124)</label><div class="control" id="cp-avail">–</div></div>
+          <div class="field"><label>Signalled Current (706)</label><div class="control value" id="cp-sig">–</div></div>
+          <div class="field"><label>Power</label><div class="control value" id="cp-power">–</div></div>
+        </div></div>
+      </div>
+
+      <!-- Status / Charger -->
+      <div class="wbm-page" id="page-status-charger">
+        <h2 class="page">Charger</h2>
+        <div class="form collapsible"><span class="title">Connection</span><div class="body">
+          <div class="field"><label>Charger</label><div class="control" id="c-name">–</div></div>
+          <div class="field"><label>Address</label><div class="control value" id="c-addr">–</div></div>
+          <div class="field"><label>Connection</label><div class="control" id="c-conn">–</div></div>
+          <div class="field"><label>Last Good Poll</label><div class="control value" id="c-last">–</div></div>
+          <div class="field"><label>Last Error</label><div class="control" id="c-err">–</div></div>
+        </div></div>
+        <div class="form collapsible"><span class="title">Charging</span><div class="body">
+          <div class="field"><label>Charger State (raw)</label><div class="control value" id="c-raw">–</div></div>
+          <div class="field"><label>Setpoint to Charger</label><div class="control value" id="c-sp">–</div></div>
+        </div></div>
+      </div>
+
+      <!-- Status / Load Management -->
+      <div class="wbm-page" id="page-status-lm">
+        <h2 class="page">Load Management</h2>
+        <p class="note" id="lm-hint" style="display:none">Load Management has not polled the gateway yet. In WALM, set the
+          charging point (type WAGO Virtual Wallbox) to address <b id="lm-addr">127.0.0.1:5020</b>.</p>
+        <div class="form collapsible"><span class="title">Connection</span><div class="body">
+          <div class="field"><label>Listening On</label><div class="control value" id="l-bind">–</div></div>
+          <div class="field"><label>Last Request</label><div class="control value" id="l-last">–</div></div>
+        </div></div>
+        <div class="form collapsible"><span class="title">Limits</span><div class="body">
+          <div class="field"><label>HEMS Limit (1000)</label><div class="control value" id="l-hems">–</div></div>
+          <div class="field"><label>Operator Limit (134)</label><div class="control value" id="l-op">–</div></div>
+          <div class="field"><label>Minimum Current (712)</label><div class="control value" id="l-min">–</div></div>
+          <div class="field"><label>Watchdog (131 / 132)</label><div class="control value" id="l-wd">–</div></div>
+        </div></div>
+      </div>
+
+      <!-- Meter / Measurements -->
+      <div class="wbm-page" id="page-meter-values">
+        <h2 class="page">Measurements</h2>
+        <div class="form collapsible"><span class="title">Totals</span><div class="body">
+          <div class="field"><label>Power</label><div class="control big" id="m-ptot">–</div></div>
+          <div class="field"><label>Energy Total</label><div class="control big" id="m-etot">–</div></div>
+        </div></div>
+        <div class="form wide"><span class="title">Phases</span><div class="body">
+          <table class="grid"><thead><tr><th></th><th class="num">L1</th><th class="num">L2</th><th class="num">L3</th></tr></thead><tbody>
+            <tr><td>Voltage</td><td class="num" id="v0">–</td><td class="num" id="v1">–</td><td class="num" id="v2">–</td></tr>
+            <tr><td>Current</td><td class="num" id="i0">–</td><td class="num" id="i1">–</td><td class="num" id="i2">–</td></tr>
+            <tr><td>Power</td><td class="num" id="p0">–</td><td class="num" id="p1">–</td><td class="num" id="p2">–</td></tr>
+          </tbody></table>
+        </div></div>
+      </div>
+
+      <!-- Configuration / Charger Profile -->
+      <div class="wbm-page" id="page-config-profile">
+        <h2 class="page">Charger Profile</h2>
+        <p class="note">The profile is the Modbus register list of the connected charger. An uploaded profile is checked
+          before it is saved (the old one is kept as .bak) and takes effect after a restart of the gateway.</p>
+        <p class="note anon-only">Log in (gear button at the top right) to download, upload or restart.</p>
+        <p class="error auth-only default-pw" style="display:none">You are logged in with the default password: change it on Configuration &gt; Login.</p>
+        <div class="form collapsible"><span class="title">Profile</span><div class="body">
+          <div class="field"><label>File</label><div class="control value" id="pf-file">–</div></div>
+          <div class="field"><label>Charger</label><div class="control" id="pf-name">–</div></div>
+          <div class="field"><label>Address</label><div class="control value" id="pf-addr">–</div></div>
+          <div class="buttons auth-only">
+            <button id="b-dl">Download</button>
+            <input id="up" type="file" accept=".toml,text/plain" hidden>
+            <button id="b-ul" class="action">Upload</button>
+            <button id="b-rs" class="assertive">Restart Gateway</button>
+          </div>
+        </div></div>
+        <div class="form wide auth-only"><span class="title">Content</span><div class="body"><pre class="file" id="pf-text">–</pre></div></div>
+      </div>
+
+      <!-- Configuration / Login -->
+      <div class="wbm-page" id="page-config-login">
+        <h2 class="page">Login</h2>
+        <p class="note" id="sstate">–</p>
+        <p class="note anon-only">Log in (gear button at the top right) to change the login.</p>
+        <form class="form collapsible auth-only" id="sform" autocomplete="off"><span class="title">Dashboard Login</span><div class="body">
+          <div class="field"><label for="suser">User</label><div class="control"><input type="text" id="suser" maxlength="32" autocomplete="username"></div></div>
+          <div class="field"><label for="spw">New Password</label><div class="control"><input type="password" id="spw" maxlength="128" autocomplete="new-password" placeholder="empty = keep the current one"></div></div>
+          <div class="field"><label for="spw2">Repeat Password</label><div class="control"><input type="password" id="spw2" maxlength="128" autocomplete="new-password"></div></div>
+          <div class="buttons"><button type="submit" class="action">Submit</button></div>
+        </div></form>
+        <p class="note">Stored on the controller in dashboard-login.toml (next to gateway.toml), the password only as a hash.
+          Forgotten password: delete that file and restart the gateway (back to admin / wago).
+          Use https://&lt;controller&gt;/walmgateway/ so the password is not sent in plain text.</p>
+      </div>
+    </div>
+  </div>
+
+  <div id="status-area">
+    <div id="clock">–<br>–</div>
+    <div class="led-table">
+      <div class="led-item" id="led-gw" title="Gateway"><div class="led"></div>GW</div>
+      <div class="led-item" id="led-chg" title="Charger"><div class="led"></div>CHG</div>
+      <div class="led-item" id="led-lm" title="Load Management"><div class="led"></div>LM</div>
+      <div class="led-item" id="led-login" title="Login"><div class="led"></div>Login</div>
+    </div>
+    <div id="status-text"></div>
+  </div>
+</div>
+<div id="login-dlg"><form id="login-form" autocomplete="on">
+  <h3>Login</h3>
+  <p>Download, Upload, Restart and the login settings need the login.</p>
+  <label for="login-user">User</label><input type="text" id="login-user" autocomplete="username">
+  <label for="login-pw">Password</label><input type="password" id="login-pw" autocomplete="current-password">
+  <div id="login-err"></div>
+  <div class="buttons"><button type="button" id="login-cancel">Cancel</button><button type="submit" class="action">Log in</button></div>
+</form></div>
+<script>
+"use strict";
+const $ = id => document.getElementById(id);
+const esc = s => String(s).replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+const set = (id, t, cls) => { const e = $(id); e.textContent = t; if (cls !== undefined) e.className = "control " + cls; };
+const num = (v, u, d = 0) => v == null ? "n/a" : (+v).toLocaleString(undefined, { maximumFractionDigits: d }) + " " + u;
+const ago = s => s == null ? "never" : s < 2 ? "just now" : s < 120 ? Math.round(s) + " s ago" : Math.round(s / 60) + " min ago";
+
+// ---- navigation: main menu (tabs) and sub menu, like the WBM ------------------
+const MENU = [
+  { id: "status", title: "Status", pages: [["cp", "Charge Point"], ["charger", "Charger"], ["lm", "Load Management"]] },
+  { id: "meter", title: "Meter", pages: [["values", "Measurements"]] },
+  { id: "config", title: "Configuration", pages: [["profile", "Charger Profile"], ["login", "Login"]] },
+];
+let tab = "status", page = "cp";
+$("main-menu").innerHTML = MENU.map(m =>
+  `<li class="tab-item" data-tab="${m.id}"><a href="#/${m.id}">${esc(m.title)}</a></li>`).join("");
+function route() {
+  let [t, p] = location.hash.replace(/^#\/?/, "").split("/");
+  const m = MENU.find(x => x.id === t) || MENU[0];
+  if (!m.pages.some(x => x[0] === p)) p = m.pages[0][0];
+  tab = m.id; page = p;
+  document.querySelectorAll("#main-menu .tab-item").forEach(li => li.classList.toggle("active", li.dataset.tab === tab));
+  $("sub-menu").innerHTML = m.pages.map(([id, title]) =>
+    `<li class="${id === page ? "active" : ""}"><a href="#/${tab}/${id}">${esc(title)}</a></li>`).join("");
+  document.querySelectorAll(".sub-content .wbm-page").forEach(d => d.classList.toggle("active", d.id === `page-${tab}-${page}`));
+  msg("");
+  if (tab === "config") loadProfile();
+}
+window.addEventListener("hashchange", route);
+document.addEventListener("click", e => {             // collapsible panels
+  const t = e.target.closest(".form > span.title");
+  if (t) t.parentNode.classList.toggle("collapsed");
+});
+$("walm-link").href = `http://${location.hostname}:3060/`;
+$("wbm-link").href = `https://${location.hostname}/wbm/`;
+
+function msg(text, ok) {
+  const m = $("msg"); m.textContent = text || ""; m.className = text ? (ok ? "success" : "error") : "";
+  if (text && ok) setTimeout(() => { if (m.textContent === text) msg(""); }, 4000);
+}
+
+// ---- login (default admin / wago) ---------------------------------------------
+// The credentials are kept for this browser tab only (sessionStorage) and sent as HTTP Basic.
+let auth = "", authUser = "", defaultPw = false, cfgUser = "admin", loginWaiters = [];
+try { auth = sessionStorage.getItem("walmgwAuth") || ""; authUser = sessionStorage.getItem("walmgwUser") || ""; } catch (e) { /* no storage */ }
+function setAuth(a, user) {
+  auth = a || ""; authUser = a ? user : "";
+  try { if (auth) { sessionStorage.setItem("walmgwAuth", auth); sessionStorage.setItem("walmgwUser", authUser); }
+        else { sessionStorage.removeItem("walmgwAuth"); sessionStorage.removeItem("walmgwUser"); } } catch (e) { /* ignore */ }
+  showLogin();
+}
+function showLogin() {
+  document.body.classList.toggle("logged-in", !!auth);
+  led("led-login", auth ? "green" : "yellow", auth ? `Logged in as ${authUser}` : "Not logged in: Download, Upload and Restart are hidden");
+  $("login-label").textContent = auth ? "Logout" : "Login";
+  $("login-btn").classList.toggle("on", !!auth);
+  $("login-btn").title = auth ? `Logged in as ${authUser}: click to log out` : "Log in";
+  document.querySelectorAll(".default-pw").forEach(e => e.style.display = defaultPw ? "" : "none");
+  $("sstate").textContent = `Login user "${cfgUser}".` + (defaultPw ? " The DEFAULT password (wago) is in use: set a new password below." : "");
+  if (document.activeElement !== $("suser") && !$("suser").value) $("suser").value = cfgUser;
+}
+function openLogin() {
+  $("login-err").textContent = ""; $("login-pw").value = ""; $("login-user").value = authUser || cfgUser;
+  $("login-dlg").classList.add("open");
+  setTimeout(() => $("login-pw").focus(), 0);
+  return new Promise(res => loginWaiters.push(res));
+}
+function closeLogin(ok) {
+  $("login-dlg").classList.remove("open");
+  const w = loginWaiters; loginWaiters = []; w.forEach(f => f(ok));
+}
+$("login-cancel").addEventListener("click", () => closeLogin(false));
+$("login-form").addEventListener("submit", async e => {
+  e.preventDefault();
+  const user = $("login-user").value.trim(), p = $("login-pw").value;
+  const a = "Basic " + btoa(unescape(encodeURIComponent(user + ":" + p)));
+  const r = await fetch("api/login", { headers: { Authorization: a }, cache: "no-store" }).catch(() => null);
+  if (!r || !r.ok) { $("login-err").textContent = r ? "User or password wrong (wait a second before the next try)." : "Not reachable."; return; }
+  const d = await r.json();
+  defaultPw = d.default_password;
+  setAuth(a, user); closeLogin(true);
+  if (defaultPw) msg("You are logged in with the default password: change it on Configuration > Login.");
+  if (tab === "config") loadProfile();
+});
+function loginClick() {
+  if (auth) { setAuth(""); msg("Logged out.", true); } else openLogin();
+}
+$("login-btn").addEventListener("click", loginClick);
+$("login-btn").addEventListener("keydown", e => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); loginClick(); } });
+
+async function api(method, url, body, ctype) {
+  const headers = { Authorization: auth };
+  if (ctype) headers["Content-Type"] = ctype;
+  const r = await fetch(url, { method, headers, body, cache: "no-store" });
+  const t = await r.text();
+  if (r.status === 401 && r.headers.get("X-Login")) { setAuth(""); throw new Error("Login required: log in again (gear button)."); }
+  if (!r.ok) throw new Error(t || ("HTTP " + r.status));
+  return t;
+}
+
+$("sform").addEventListener("submit", async e => {
+  e.preventDefault();
+  const user = $("suser").value.trim(), p = $("spw").value;
+  if (p !== $("spw2").value) return msg("The two passwords are not the same.");
+  if (defaultPw && !p) return msg("Enter a new password: the default password is still in use.");
+  try {
+    msg(await api("POST", "api/settings", JSON.stringify({ user, password: p || null }), "application/json"), true);
+    $("spw").value = $("spw2").value = "";
+    if (p) defaultPw = false;
+    cfgUser = user;
+    setAuth("");                                       // new credentials: log in again with them
+    openLogin();
+  } catch (err) { msg(err.message); }
+});
+
+// ---- charger profile ------------------------------------------------------------
+let pfile = "profile.toml", restarting = false;
+async function loadProfile() {
+  if (!auth) return;
+  try { $("pf-text").textContent = await api("GET", "api/profile"); } catch (e) { $("pf-text").textContent = e.message; }
+}
+$("b-dl").addEventListener("click", async () => {
+  try {
+    const t = await api("GET", "api/profile");
+    const a = document.createElement("a"); a.href = URL.createObjectURL(new Blob([t], { type: "text/plain" }));
+    a.download = pfile; document.body.appendChild(a); a.click(); a.remove(); msg("Downloaded " + pfile, true);
+  } catch (e) { msg(e.message); }
+});
+$("b-ul").addEventListener("click", () => $("up").click());
+$("up").addEventListener("change", async () => {
+  const inp = $("up"), f = inp.files[0];
+  inp.value = "";                                      // picking the same file again fires change again
+  if (!f) return;
+  if (!confirm(`Replace charger profile ${pfile} with ${f.name}?\nThe current file is kept as .bak. Takes effect after a restart.`)) return;
+  try { msg(await api("POST", "api/profile", await f.text()), true); loadProfile(); } catch (e) { msg(e.message); }
+});
+$("b-rs").addEventListener("click", async () => {
+  if (!confirm("Restart the gateway?\nLoad Management loses the charger for a few seconds.")) return;
+  try { await api("POST", "api/restart"); restarting = true; msg("Restarting… the page reconnects automatically.", true); }
+  catch (e) { msg(e.message); }
+});
+
+// ---- status ---------------------------------------------------------------------
+const OCPP = { 0: ["Available", "ok-text"], 2: ["Reserved", ""], 3: ["Unavailable", "warn-text"], 4: ["Faulted", "bad-text"],
+  5: ["Preparing", "ok-text"], 6: ["Charging", "ok-text"], 7: ["Suspended (EVSE)", "warn-text"], 8: ["Suspended (EV)", "warn-text"], 9: ["Finishing", ""] };
+const VEH = { 1: "A: no vehicle", 2: "B: vehicle connected", 3: "C: charging", 4: "D: charging (ventilation)", 5: "E: error" };
+function led(id, color, title) { const it = $(id); it.title = title; it.firstElementChild.className = "led " + (color || ""); }
+
+async function refresh() {
+  let d;
+  try { d = await (await fetch("api/status", { cache: "no-store" })).json(); }
+  catch (e) {
+    led("led-gw", "red", "Gateway not reachable"); led("led-chg", "", "unknown"); led("led-lm", "", "unknown");
+    $("status-text").textContent = "Gateway not reachable";
+    return;
+  }
+  const g = d.regs, c = d.charger, lr = d.lm.last_request_s_ago;
+  if (cfgUser !== d.config.user || defaultPw !== d.config.default_password) { cfgUser = d.config.user; defaultPw = d.config.default_password; showLogin(); }
+  if (restarting && d.uptime_s < 60) { restarting = false; msg("Gateway restarted.", true); if (tab === "config") loadProfile(); }
+  pfile = d.config.profile_file;
+  const t = new Date(d.time_ms);
+  $("clock").innerHTML = `${esc(t.toLocaleDateString())}<br>${esc(t.toLocaleTimeString())}`;
+
+  const [st, cls] = OCPP[g.ocpp_status] || [`Unknown (${g.ocpp_status})`, ""];
+  set("cp-state", st, "big " + cls);
+  set("cp-veh", VEH[g.vehicle_state] || String(g.vehicle_state));
+  set("cp-avail", g.cp_availability ? "available" : "unavailable (set by Load Management)", g.cp_availability ? "" : "warn-text");
+  set("cp-sig", g.signaled_current_a + " A");
+  set("cp-power", num(g.power_total_w, "W"));
+
+  set("c-name", d.profile);
+  set("c-addr", d.downstream);
+  set("c-conn", c.connected ? "connected" : "disconnected", c.connected ? "ok-text" : "bad-text");
+  set("c-last", ago(c.last_ok_s_ago), "value");
+  set("c-err", c.last_error || "–");
+  set("c-raw", c.raw_state || "–", "value");
+  set("c-sp", c.setpoint_target_a == null ? "not configured" : c.setpoint_target_a + " A · " + (c.setpoint_error ? "rejected: " + c.setpoint_error : "accepted"),
+      "value " + (c.setpoint_error ? "bad-text" : ""));
+
+  set("l-bind", d.server);
+  set("l-last", lr == null ? "never" : ago(lr), "value " + (lr == null || lr > 30 ? "warn-text" : "ok-text"));
+  $("lm-hint").style.display = lr == null ? "" : "none";
+  $("lm-addr").textContent = "127.0.0.1:" + (d.server.split(":").pop() || "5020");
+  set("l-hems", g.hems_limit_a + " A"); set("l-op", g.operator_limit_a + " A"); set("l-min", g.min_current_a + " A");
+  set("l-wd", g.comm_timeout_s ? `${g.safe_current_a} A after ${g.comm_timeout_s} s without a request` : "off");
+
+  set("m-ptot", num(g.power_total_w, "W"), "big");
+  set("m-etot", g.energy_total_wh == null ? "n/a" : num(g.energy_total_wh / 1000, "kWh", 2), "big");
+  for (let i = 0; i < 3; i++) {
+    $("v" + i).textContent = num(g.voltage_v[i], "V");
+    $("i" + i).textContent = g.current_ma[i] == null ? "n/a" : num(g.current_ma[i] / 1000, "A", 2);
+    $("p" + i).textContent = num(g.power_w[i], "W");
+  }
+
+  set("pf-file", pfile, "value"); set("pf-name", d.profile); set("pf-addr", d.downstream, "value");
+
+  led("led-gw", "green", `Gateway running, up ${Math.floor(d.uptime_s / 60)} min`);
+  led("led-chg", c.connected ? "green" : "red", c.connected ? "Charger connected" : "Charger not connected");
+  led("led-lm", lr != null && lr <= 30 ? "green" : "yellow", lr == null ? "Load Management has not polled yet" : "Last request " + ago(lr));
+  $("status-text").textContent = `${st} · ${g.signaled_current_a} A · ${num(g.power_total_w, "W")}`;
+}
+
+showLogin();
+route();
+refresh(); setInterval(refresh, 2000);
+</script>
+</body>
+</html>
