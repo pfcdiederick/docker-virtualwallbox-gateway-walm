@@ -9,3 +9,6 @@ Information/
 /nohost.toml
 dashboard-login.toml
 *.bak
+
+# Saved Docker images (docker save, ~1 MB each)
+dist/
