@@ -165,6 +165,24 @@ docker run -d --name vwb-gateway --restart unless-stopped --network host \
 Another config file: append its path to `docker run ... vwb-gateway:<version> /config/other.toml`.
 Edit the charger profile (`config/profiles/alfen_eve_pro.toml`) → set `host` (and `port`) to the Alfen's address before starting.
 
+### Saved image (local copy)
+Keep a copy of a built image as a file, e.g. to install it later without building, on a
+controller without access to the build PC's Docker, or as a backup of the version that runs:
+```bash
+V=$(cat VERSION)
+mkdir -p dist
+docker save vwb-gateway:$V | gzip -9 > dist/vwb-gateway_${V}_armv7.tar.gz     # ~1.3 MB
+sha256sum dist/vwb-gateway_${V}_armv7.tar.gz > dist/vwb-gateway_${V}_armv7.tar.gz.sha256
+```
+`dist/` is in `.gitignore`: the image files are not pushed to GitHub. Load it again:
+```bash
+sha256sum -c dist/vwb-gateway_0.12_armv7.tar.gz.sha256                # copy undamaged?
+docker load < dist/vwb-gateway_0.12_armv7.tar.gz                      # into Docker on this PC
+gunzip -c dist/vwb-gateway_0.12_armv7.tar.gz | ssh root@<controller> docker load   # onto a controller
+deploy/deploy.sh <controller> --no-build                              # then start it with all options
+```
+The image is linux/arm/v7 (CC100); it does not run on an x86 PC, it only loads there.
+
 ### Running next to Load Management on the CC100
 Verified on 192.168.178.222: **:502 is already owned by `codesys3`** (the PLC runtime's
 Modbus slave). So on the CC100 set `server.bind = "0.0.0.0:5020"` (any free port) and enter
