@@ -68,8 +68,8 @@ panels, status bar with date/time and LEDs (GW, CHG, LM, Login). Look per the
 [WAGO corporate design](https://www.wago.com/global/corporatedesign) for functional touchpoints:
 white base, WAGO Green `#6EC800` only as accent (never as text colour on light backgrounds, no
 white text on green), text in Anthracite `#1F2837`, Light Gray `#EFF0F1` to separate sections,
-font WAGO Connective with Arial as fallback, sentence case. Header: logo │ **Netherlands** │
-WALM gateway, tabs on their own row below. Error/warning colours and button shapes are not in
+font WAGO Connective with Arial as fallback, sentence case. Header: logo │ **Netherlands**,
+then the WBM-style tabs on the same row. Error/warning colours and button shapes are not in
 the public guide (they are in WAGO's Figma core library) and are own choices.
 
 **Logo.** The guide allows only the original logo files. Put the official `wago-logo.svg` in the
@@ -172,14 +172,14 @@ binary and ships it on a static busybox (for the start script) — the whole ima
 
 ```bash
 # on the build PC
-docker buildx build --platform linux/arm/v7 -t vwb-gateway:0.13 --load .
-docker save vwb-gateway:0.13 | ssh root@<cc100> docker load
+docker buildx build --platform linux/arm/v7 -t vwb-gateway:0.14 --load .
+docker save vwb-gateway:0.14 | ssh root@<cc100> docker load
 
 # on the CC100 (config dir copied to e.g. /root/vwb/config)
 docker run -d --name vwb-gateway --restart unless-stopped --network host \
   --pid host --cap-add SYS_ADMIN --cap-add SYS_PTRACE --cap-add SYS_CHROOT \
   --memory 32m --cpus 0.3 --log-opt max-size=1m --log-opt max-file=2 \
-  -v /root/vwb/config:/config vwb-gateway:0.13   # writable: dashboard upload
+  -v /root/vwb/config:/config vwb-gateway:0.14   # writable: dashboard upload
 ```
 Another config file: append its path to `docker run ... vwb-gateway:<version> /config/other.toml`.
 Edit the charger profile (`config/profiles/alfen_eve_pro.toml`) → set `host` (and `port`) to the Alfen's address before starting.

@@ -25,25 +25,29 @@ body { margin: 0; background: var(--white); color: var(--anthracite);
 a { color: var(--anthracite); }
 #frame { display: flex; flex-direction: column; height: 100vh; min-width: 720px; }
 
-/* ---- header: brand bar (logo | Netherlands | application) + tab row ---- */
-#main-header { flex: none; background: var(--white); border-bottom: 1px solid var(--anth15); }
-#brand-bar { display: flex; align-items: center; height: 60px; padding: 0 16px 0 24px; }
+/* ---- header, one row: brand (logo | Netherlands), WBM-style tabs, action bar ---- */
+#main-header { flex: none; height: 61px; background: var(--white); border-bottom: 1px solid var(--anth15);
+  display: flex; align-items: flex-end; padding-left: 24px; }
+#brand-bar { display: flex; align-items: center; align-self: stretch; flex: none; padding-right: 28px; }
 #logo { display: flex; align-items: center; }
 #logo img { height: 26px; min-width: 40px; display: block; }
 #logo .text { display: none; font-weight: 700; font-size: 22px; color: var(--anthracite); letter-spacing: 1px; }
 #logo.noimg img { display: none; } #logo.noimg .text { display: block; }
-.brand-sep { width: 1px; height: 22px; background: var(--anth40); margin: 0 18px; flex: none; }
+.brand-sep { width: 1px; height: 22px; background: var(--anth40); margin: 0 16px; flex: none; }
 .brand-country { font-size: 15px; font-weight: 700; white-space: nowrap; }
-.brand-app { font-size: 15px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.brand-app .light { color: var(--anth70); }
-#main-menu { list-style: none; margin: 0; padding: 0 0 0 12px; display: flex; height: 44px; }
-#main-menu .tab-item { position: relative; display: flex; }
-#main-menu .tab-item a { display: flex; align-items: center; padding: 0 18px; color: var(--anth70);
-  text-decoration: none; font-size: 15px; cursor: pointer; user-select: none; }
-#main-menu .tab-item a:hover { color: var(--anthracite); background: var(--light); }
-#main-menu .tab-item.active a { color: var(--anthracite); font-weight: 700; }
-#main-menu .tab-item.active::after { content: ""; position: absolute; left: 0; right: 0; bottom: -1px; height: 4px; background: var(--green); }
-#action-bar { list-style: none; margin: 0 0 0 auto; padding: 0 0 0 16px; display: flex; align-items: center; gap: 10px; }
+/* tabs in the shape of the controller's WBM, in WAGO colours */
+#main-menu { list-style: none; margin: 0; padding: 0; display: flex; align-items: flex-end; height: 61px; position: relative; z-index: 0; flex: none; }
+#main-menu .tab-item { position: relative; margin: 26px -6px -1px 0; height: 34px; width: 126px; }
+#main-menu .tab-item::before { content: ""; position: absolute; inset: 0; z-index: -1; background: var(--light);
+  border: 1px solid var(--anth15); border-bottom: none; border-radius: 14px 14px 0 0;
+  transform: perspective(36px) rotateX(5deg); transform-origin: bottom; }
+#main-menu .tab-item a { display: block; height: 34px; padding: 8px 10px 0; text-align: center; color: var(--anth70);
+  text-decoration: none; font-size: 14px; cursor: pointer; user-select: none; }
+#main-menu .tab-item a:hover { color: var(--anthracite); }
+#main-menu .tab-item.active { z-index: 1; width: 146px; height: 36px; }
+#main-menu .tab-item.active::before { background: var(--white); border-color: var(--anth15); box-shadow: inset 0 3px 0 var(--green); }
+#main-menu .tab-item.active a { color: var(--anthracite); font-weight: 700; height: 36px; }
+#action-bar { list-style: none; margin: 0 0 0 auto; padding: 0 16px 0 16px; display: flex; align-self: center; align-items: center; gap: 10px; }
 #action-bar li { display: flex; flex-direction: column; align-items: center; width: 52px; }
 #action-bar a { display: flex; align-items: center; justify-content: center; width: 32px; height: 32px; border-radius: 50%;
   border: 1px solid var(--anth40); background: var(--white); color: var(--anthracite); cursor: pointer; }
@@ -152,9 +156,8 @@ body.logged-in .anon-only { display: none !important; }
 #login-err { color: var(--red); min-height: 1em; margin-top: 8px; font-size: 13px; }
 
 @media (max-width: 900px) {
-  #brand-bar { padding-left: 12px; } .brand-sep { margin: 0 10px; }
-  .brand-app .light { display: none; }
-  #main-menu .tab-item a { padding: 0 12px; }
+  #main-header { padding-left: 12px; } #brand-bar { padding-right: 16px; } .brand-sep { margin: 0 10px; }
+  #main-menu .tab-item { width: 92px; } #main-menu .tab-item.active { width: 108px; }
   .sub-menu { width: 180px; }
   #action-bar label { display: none; }
 }
@@ -166,8 +169,9 @@ body.logged-in .anon-only { display: none !important; }
     <div id="brand-bar">
       <div id="logo"><img src="logo.svg" alt="WAGO" onerror="if(!this.dataset.wbm){this.dataset.wbm=1;this.src='/wbm/images/wago-logo.svg'}else this.parentNode.classList.add('noimg')"><span class="text">WAGO</span></div>
       <span class="brand-sep"></span><span class="brand-country">Netherlands</span>
-      <span class="brand-sep"></span><span class="brand-app">WALM gateway <span class="light">virtual wallbox</span></span>
-      <ul id="action-bar">
+    </div>
+    <ul id="main-menu"></ul>
+    <ul id="action-bar">
       <li><a id="login-btn" role="button" tabindex="0" title="Log in"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M19.14 12.94c.04-.3.06-.61.06-.94 0-.32-.02-.64-.07-.94l2.03-1.58a.49.49 0 0 0 .12-.61l-1.92-3.32a.488.488 0 0 0-.59-.22l-2.39.96c-.5-.38-1.03-.7-1.62-.94l-.36-2.54a.484.484 0 0 0-.48-.41h-3.84c-.24 0-.43.17-.47.41l-.36 2.54c-.59.24-1.13.57-1.62.94l-2.39-.96c-.22-.08-.47 0-.59.22L2.74 8.87c-.12.21-.08.47.12.61l2.03 1.58c-.05.3-.09.63-.09.94s.02.64.07.94l-2.03 1.58a.49.49 0 0 0-.12.61l1.92 3.32c.12.22.37.29.59.22l2.39-.96c.5.38 1.03.7 1.62.94l.36 2.54c.05.24.24.41.48.41h3.84c.24 0 .44-.17.47-.41l.36-2.54c.59-.24 1.13-.56 1.62-.94l2.39.96c.22.08.47 0 .59-.22l1.92-3.32c.12-.22.07-.47-.12-.61l-2.01-1.58zM12 15.6c-1.98 0-3.6-1.62-3.6-3.6s1.62-3.6 3.6-3.6 3.6 1.62 3.6 3.6-1.62 3.6-3.6 3.6z"/></svg></a>
         <label id="login-label">Login</label></li>
       <li><a id="walm-link" href="/" target="_blank" rel="noopener" title="WAGO Load Management">
@@ -177,8 +181,6 @@ body.logged-in .anon-only { display: none !important; }
         <svg viewBox="0 0 24 24" fill="currentColor"><path d="M19 19H5V5h7V3H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14c1.1 0 2-.9 2-2v-7h-2v7zM14 3v2h3.59l-9.83 9.83 1.41 1.41L19 6.41V10h2V3h-7z"/></svg></a>
         <label>WBM</label></li>
     </ul>
-    </div>
-    <ul id="main-menu"></ul>
   </div>
 
   <div id="main-content">
