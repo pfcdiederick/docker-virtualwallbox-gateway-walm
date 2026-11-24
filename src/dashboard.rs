@@ -7,6 +7,8 @@
 //!   POST /api/settings             change user / password (login), JSON {"user":..,"password":..|null}
 //!   GET  /api/profile              download the charger profile (Modbus register list)
 //!   POST /api/profile              upload a charger profile (validated before saving)
+//!   POST /api/profile/check        validate a charger profile only (nothing saved)
+//!   GET  /logo.svg                 wago-logo.svg from the config folder (official WAGO logo file), if present
 //!   POST /api/restart              exit -> Docker restart policy restarts us
 //! gateway.toml is deliberately NOT reachable from the dashboard.
 //! Profile, restart and settings always need the login (default admin / wago, see auth.rs).
@@ -33,6 +35,8 @@ pub struct Info {
     pub profile_path: String,
     pub downstream_cfg: DownstreamCfg, // to check that an uploaded profile still yields a charger IP
     pub login: crate::auth::Login,
+    /// Optional official WAGO logo (wago-logo.svg next to gateway.toml); the page falls back to the WBM logo.
+    pub logo_path: String,
 }
 
 pub async fn run(bind: String, img: RegImage, info: Arc<Info>) -> Result<()> {
@@ -149,6 +153,19 @@ async fn route(req: &Req, img: &RegImage, info: &Info) -> Vec<u8> {
                 },
             }
         }
+        ("GET", "/logo.svg") => match std::fs::read_to_string(&info.logo_path) {
+            Ok(svg) => http("200 OK", "image/svg+xml", &svg),
+            Err(_) => text("404 Not Found", "no wago-logo.svg in the config folder"),
+        },
+        ("POST", "/api/profile/check") => {
+            if let Err(resp) = authorize(req, info) {
+                return resp;
+            }
+            match validate(req, info) {
+                Ok((_, msg)) => text("200 OK", &format!("Valid charger profile, nothing saved: {msg}.")),
+                Err(e) => text("400 Bad Request", &format!("Not a valid charger profile:\n{e}")),
+            }
+        }
         ("GET", "/api/profile") | ("POST", "/api/profile") | ("POST", "/api/restart") => {
             if let Err(resp) = authorize(req, info) {
                 return resp;
@@ -190,18 +207,9 @@ fn profile_file(req: &Req, info: &Info) -> Vec<u8> {
         };
     }
     // POST: validate before touching the file on disk
-    let Ok(new) = std::str::from_utf8(&req.body) else {
-        return text("400 Bad Request", "file is not valid UTF-8 text");
-    };
-    let ep = match toml::from_str::<Profile>(new) {
-        Ok(p) => info.downstream_cfg.endpoint(&p),
-        Err(e) => {
-            return text("400 Bad Request", &format!("Rejected, nothing saved — not a valid charger profile:\n{e}"))
-        }
-    };
-    let ep = match ep {
-        Ok(ep) => ep,
-        Err(e) => return text("400 Bad Request", &format!("Rejected, nothing saved — {e}")),
+    let (new, what) = match validate(req, info) {
+        Ok(v) => v,
+        Err(e) => return text("400 Bad Request", &format!("Rejected, nothing saved — not a valid charger profile:\n{e}")),
     };
     let tmp = format!("{path}.new");
     let res = std::fs::write(&tmp, new)
@@ -211,12 +219,20 @@ fn profile_file(req: &Req, info: &Info) -> Vec<u8> {
         Ok(()) => {
             eprintln!("[dashboard] {path} replaced via upload (previous kept as .bak)");
             text("200 OK", &format!(
-                "Saved {path} (previous version kept as .bak), charger {}:{}. Restart the gateway to apply.",
-                ep.host, ep.port
+                "Saved {path} (previous version kept as .bak): {what}. Restart the gateway to apply."
             ))
         }
         Err(e) => text("500 Internal Server Error", &format!("could not save {path}: {e} (is /config mounted read-only?)")),
     }
+}
+
+/// Body must be UTF-8 TOML that parses as a charger profile and yields a charger address.
+/// Ok((text, "<name>, charger <host>:<port>")).
+fn validate<'a>(req: &'a Req, info: &Info) -> Result<(&'a str, String), String> {
+    let new = std::str::from_utf8(&req.body).map_err(|_| "file is not valid UTF-8 text".to_string())?;
+    let p = toml::from_str::<Profile>(new).map_err(|e| e.to_string())?;
+    let ep = info.downstream_cfg.endpoint(&p).map_err(|e| format!("{e:#}"))?;
+    Ok((new, format!("{}, charger {}:{}", p.name, ep.host, ep.port)))
 }
 
 fn js(s: &str) -> String {

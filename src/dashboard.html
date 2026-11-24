@@ -3,149 +3,159 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>WALM Gateway</title>
+<title>WALM gateway · WAGO Netherlands</title>
 <link rel="icon" href="/wbm/images/favicon.png">
 <style>
-/* Same layout as the kbus-manager, i.e. the controller's Web-based Management (WBM).
-   Fonts, logo and favicon come from the controller's own WBM (/wbm/...), which is on the
-   same origin when the page is opened at http(s)://<controller>/walmgateway/. Opened
-   directly on port 3090 they are missing: system fonts and a text logo instead. */
-@font-face { font-family: "Open Sans"; font-weight: 300; src: url(/wbm/fonts/open-sans-latin-300.woff2) format("woff2"); }
-@font-face { font-family: "Open Sans"; font-weight: 400; src: url(/wbm/fonts/open-sans-latin-400.woff2) format("woff2"); }
-@font-face { font-family: "Open Sans"; font-weight: 400; font-style: italic; src: url(/wbm/fonts/open-sans-latin-400italic.woff2) format("woff2"); }
-@font-face { font-family: "Open Sans"; font-weight: 600; src: url(/wbm/fonts/open-sans-latin-600.woff2) format("woff2"); }
-@font-face { font-family: "Open Sans"; font-weight: 700; src: url(/wbm/fonts/open-sans-latin-700.woff2) format("woff2"); }
+/* WAGO corporate design (www.wago.com/global/corporatedesign), functional touchpoint:
+   - primary colour White; Green, Anthracite and Light Gray as secondary colours to highlight and
+     separate topics; anthracite tints for lines and secondary text
+   - text in black/anthracite: no green text on light backgrounds and no white text on green (digital)
+   - font WAGO Connective (pre-installed on WAGO devices), fallback Arial; sentence case, left aligned
+   - logo top left: official wago-logo.svg from the config folder, else the controller's WBM logo
+   Not specified by the guide (own choices): signal colours for error/warning, button and panel shapes. */
 :root {
-  --text: rgb(33, 33, 33); --line: rgb(204, 204, 204); --panel: rgb(246, 246, 246); --bg: rgb(254, 254, 254);
-  --bar: rgb(252, 252, 252); --green: rgb(139, 182, 59); --green-dark: rgb(113, 149, 49);
-  --green-hover: rgb(124, 163, 53); --green-active: rgb(110, 143, 47);
-  --red: rgb(225, 89, 64); --red-dark: rgb(189, 56, 33); --blue: rgb(105, 173, 219); --grey: rgb(164, 164, 164);
-  --amber: rgb(176, 120, 0);
+  --white: #FFFFFF; --green: #6EC800; --green-hover: #63B400; --green-active: #589F00;
+  --anthracite: #1F2837; --anth70: #616A73; --anth40: #A5A8AF; --anth15: #DEDFE1; --light: #EFF0F1;
+  --red: #C8102E; --red-bg: #FCEBEE; --amber: #9A5B00; --amber-led: #F2A900; --green-bg: #F2FAE6;
 }
 * { box-sizing: border-box; }
 html, body { height: 100%; }
-body { margin: 0; background: var(--bg); color: var(--text); font: 13px "Open Sans", "Segoe UI", Arial, sans-serif; }
-a { color: var(--green-dark); }
+body { margin: 0; background: var(--white); color: var(--anthracite);
+  font: 14px/1.3 "WAGO Connective", Arial, sans-serif; letter-spacing: -0.005em; }
+a { color: var(--anthracite); }
 #frame { display: flex; flex-direction: column; height: 100vh; min-width: 720px; }
 
-/* ---- header: logo, tab menu, action bar ---- */
-#main-header { position: relative; flex: none; height: 61px; background: var(--bar); border-bottom: 1px solid var(--line);
-  display: flex; align-items: flex-end; padding-left: 160px; }
-#logo { position: absolute; left: 34px; top: 14px; height: 28px; display: flex; align-items: center; }
-#logo img { height: 28px; display: block; }
-#logo .text { display: none; font-weight: 700; font-size: 20px; color: var(--green); letter-spacing: 1px; }
+/* ---- header: brand bar (logo | Netherlands | application) + tab row ---- */
+#main-header { flex: none; background: var(--white); border-bottom: 1px solid var(--anth15); }
+#brand-bar { display: flex; align-items: center; height: 60px; padding: 0 16px 0 24px; }
+#logo { display: flex; align-items: center; }
+#logo img { height: 26px; min-width: 40px; display: block; }
+#logo .text { display: none; font-weight: 700; font-size: 22px; color: var(--anthracite); letter-spacing: 1px; }
 #logo.noimg img { display: none; } #logo.noimg .text { display: block; }
-#main-menu { list-style: none; margin: 0; padding: 0; display: flex; align-items: flex-end; height: 61px; position: relative; z-index: 0; }
-#main-menu .tab-item { position: relative; margin: 26px -6px -1px 0; height: 34px; width: 126px; }
-#main-menu .tab-item::before { content: ""; position: absolute; inset: 0 0 0 0; z-index: -1; background: var(--panel);
-  border: 1px solid var(--line); border-bottom: none; border-radius: 14px 14px 0 0;
-  transform: perspective(36px) rotateX(5deg); transform-origin: bottom; }
-#main-menu .tab-item a { display: block; height: 34px; padding: 8px 10px 0; text-align: center; color: var(--text);
-  text-decoration: none; font-size: 14px; font-weight: 300; cursor: pointer; user-select: none; }
-#main-menu .tab-item.active { z-index: 1; width: 146px; height: 36px; }
-#main-menu .tab-item.active::before { background: var(--bg); box-shadow: rgba(139, 182, 59, 0.5) 0 34px 85px 8px; }
-#main-menu .tab-item.active a { font-weight: 400; height: 36px; }
-#action-bar { list-style: none; margin: 0 0 0 auto; padding: 0 8px 4px 0; display: flex; align-self: center; gap: 12px; }
+.brand-sep { width: 1px; height: 22px; background: var(--anth40); margin: 0 18px; flex: none; }
+.brand-country { font-size: 15px; font-weight: 700; white-space: nowrap; }
+.brand-app { font-size: 15px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.brand-app .light { color: var(--anth70); }
+#main-menu { list-style: none; margin: 0; padding: 0 0 0 12px; display: flex; height: 44px; }
+#main-menu .tab-item { position: relative; display: flex; }
+#main-menu .tab-item a { display: flex; align-items: center; padding: 0 18px; color: var(--anth70);
+  text-decoration: none; font-size: 15px; cursor: pointer; user-select: none; }
+#main-menu .tab-item a:hover { color: var(--anthracite); background: var(--light); }
+#main-menu .tab-item.active a { color: var(--anthracite); font-weight: 700; }
+#main-menu .tab-item.active::after { content: ""; position: absolute; left: 0; right: 0; bottom: -1px; height: 4px; background: var(--green); }
+#action-bar { list-style: none; margin: 0 0 0 auto; padding: 0 0 0 16px; display: flex; align-items: center; gap: 10px; }
 #action-bar li { display: flex; flex-direction: column; align-items: center; width: 52px; }
-#action-bar a { display: flex; align-items: center; justify-content: center; width: 30px; height: 30px; border-radius: 50%;
-  border: 1px solid var(--line); background: var(--bg); color: var(--text); cursor: pointer; }
-#action-bar a:hover { background: rgba(139, 182, 59, 0.1); }
+#action-bar a { display: flex; align-items: center; justify-content: center; width: 32px; height: 32px; border-radius: 50%;
+  border: 1px solid var(--anth40); background: var(--white); color: var(--anthracite); cursor: pointer; }
+#action-bar a:hover { background: var(--light); }
 #action-bar svg { width: 16px; height: 16px; }
-#action-bar label { font-size: 11px; margin-top: 2px; }
+#action-bar label { font-size: 11px; margin-top: 3px; color: var(--anth70); }
+#login-btn.on { border-color: var(--green); box-shadow: inset 0 0 0 1px var(--green); }
 
-/* ---- content: sub menu + page ---- */
-#main-content { flex: 1; display: flex; min-height: 0; background: var(--bg); }
-.sub-menu { list-style: none; margin: 0; padding: 17px 0 0; width: 240px; flex: none; border-right: 1px solid var(--line); overflow-y: auto; }
-.sub-menu li { position: relative; border-top: 1px solid var(--line); padding: 0 17px; }
-.sub-menu li:last-child { border-bottom: 1px solid var(--line); }
-.sub-menu li a { display: flex; align-items: center; height: 52px; color: var(--text); text-decoration: none; cursor: pointer; }
-.sub-menu li.active { box-shadow: rgba(139, 182, 59, 0.05) 0 0 51px 0; }
-.sub-menu li.active::before { content: ""; position: absolute; left: 0; top: -1px; bottom: -1px; width: 4px; background: var(--green); }
-.sub-menu li.active a { font-weight: 600; }
-.sub-content { flex: 1; overflow-y: auto; padding: 0 17px 34px 34px; }
-h2.page { font-size: 23px; font-weight: 300; margin: 17px 0; }
+/* ---- content: page menu (light gray) + page ---- */
+#main-content { flex: 1; display: flex; min-height: 0; }
+.sub-menu { list-style: none; margin: 0; padding: 16px 0 0; width: 240px; flex: none; background: var(--light); overflow-y: auto; }
+.sub-menu li { position: relative; }
+.sub-menu li a { display: flex; align-items: center; height: 48px; padding: 0 20px; color: var(--anthracite); text-decoration: none; cursor: pointer; }
+.sub-menu li a:hover { background: var(--anth15); }
+.sub-menu li.active a { background: var(--white); font-weight: 700; }
+.sub-menu li.active::before { content: ""; position: absolute; left: 0; top: 0; bottom: 0; width: 4px; background: var(--green); }
+.sub-content { flex: 1; overflow-y: auto; padding: 0 24px 32px 32px; }
+h2.page { font-size: 24px; font-weight: 700; line-height: 1.1; letter-spacing: -0.01em; margin: 24px 0 16px; }
 .wbm-page { display: none; } .wbm-page.active { display: block; }
 
 /* notes and messages */
-p.note, p.error, p.success { position: relative; margin: 17px 0; padding: 8px 10px 8px 28px; border: 1px solid; font-style: italic; max-width: 1094px; white-space: pre-wrap; }
-p.note { border-color: var(--blue); background: rgba(105, 173, 219, 0.05); }
-p.error { border-color: var(--red); background: rgba(225, 89, 64, 0.05); }
-p.success { border-color: var(--green); background: rgba(139, 182, 59, 0.06); }
-p.note::before, p.error::before, p.success::before { position: absolute; left: 9px; top: 10px; width: 12px; height: 12px; border-radius: 50%;
-  color: #fff; font: 700 9px/12px Arial, sans-serif; text-align: center; font-style: normal; }
-p.note::before { content: "i"; background: var(--blue); }
-p.error::before { content: "!"; background: var(--red); }
-p.success::before { content: "\2713"; background: var(--green); }
+p.note, p.error, p.success { position: relative; margin: 16px 0; padding: 10px 12px 10px 36px; border-left: 4px solid; max-width: 1094px; white-space: pre-wrap; }
+p.note { border-color: var(--anth70); background: var(--light); }
+p.error { border-color: var(--red); background: var(--red-bg); }
+p.success { border-color: var(--green); background: var(--green-bg); }
+p.note::before, p.error::before, p.success::before { position: absolute; left: 11px; top: 11px; width: 15px; height: 15px; border-radius: 50%;
+  font: 700 10px/15px Arial, sans-serif; text-align: center; }
+p.note::before { content: "i"; background: var(--anth70); color: var(--white); }
+p.error::before { content: "!"; background: var(--red); color: var(--white); }
+p.success::before { content: "\2713"; background: var(--green); color: var(--anthracite); }
 #msg:empty { display: none; }
 
-/* collapsible forms (panels) */
-.form { border: 1px solid var(--line); border-radius: 2px; margin: 17px 0; width: 480px; max-width: 100%; }
+/* collapsible panels */
+.form { border: 1px solid var(--anth15); margin: 16px 0; width: 520px; max-width: 100%; }
 .form.wide { width: auto; max-width: 1094px; }
-.form > span.title { position: relative; display: block; height: 34px; line-height: 34px; padding: 0 30px 0 9px;
-  background: var(--panel); font-size: 15px; cursor: pointer; user-select: none; }
-.form > span.title::after { content: ""; position: absolute; right: 14px; top: 15px; width: 5px; height: 5px;
-  border-left: 1.5px solid var(--text); border-top: 1.5px solid var(--text); transform: rotate(45deg); }
-.form.collapsed > span.title::after { top: 12px; transform: rotate(225deg); }
+.form > span.title { position: relative; display: block; height: 40px; line-height: 40px; padding: 0 36px 0 12px;
+  background: var(--light); font-size: 15px; font-weight: 700; cursor: pointer; user-select: none; }
+.form > span.title::after { content: ""; position: absolute; right: 16px; top: 18px; width: 6px; height: 6px;
+  border-left: 2px solid var(--anthracite); border-top: 2px solid var(--anthracite); transform: rotate(45deg); }
+.form.collapsed > span.title::after { top: 13px; transform: rotate(225deg); }
 .form.collapsed > .body { display: none; }
-.form > .body { padding: 0 0 9px; }
-.field { display: flex; align-items: center; padding: 9px; min-height: 52px; }
-.field > label { flex: none; width: 173px; padding-right: 17px; font-weight: 600; }
+.form > .body { padding: 4px 0 8px; }
+.field { display: flex; align-items: center; padding: 8px 12px; min-height: 48px; border-bottom: 1px solid var(--light); }
+.field:last-of-type { border-bottom: none; }
+.field > label { flex: none; width: 190px; padding-right: 16px; color: var(--anth70); }
 .field > .control { flex: 1; min-width: 0; overflow-wrap: anywhere; }
 .field > .control.value { font-variant-numeric: tabular-nums; }
-.buttons { display: flex; justify-content: flex-end; gap: 9px; padding: 9px; }
-.ok-text { color: var(--green-dark); } .bad-text { color: var(--red-dark); font-weight: 600; } .warn-text { color: var(--amber); font-weight: 600; }
-.ok-text::before { content: "\2713  "; color: var(--green); } .bad-text::before { content: "\2715  "; }
-.big { font-size: 23px; font-weight: 300; font-variant-numeric: tabular-nums; }
+.buttons { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 8px; padding: 8px 12px; }
+.buttons .spacer { flex: 1; }
+.ok-text::before { content: "\25CF  "; color: var(--green); }
+.bad-text { color: var(--red); font-weight: 700; } .bad-text::before { content: "\25CF  "; color: var(--red); }
+.warn-text { color: var(--amber); font-weight: 700; } .warn-text::before { content: "\25CF  "; color: var(--amber-led); }
+.big { font-size: 26px; font-variant-numeric: tabular-nums; }
 
 /* inputs and buttons */
-input[type=text], input[type=password] { height: 34px; width: 100%; padding: 0 8.5px; border: 1px solid var(--line); border-radius: 2px; background: #fff;
-  color: #000; font: 13px "Open Sans", "Segoe UI", Arial, sans-serif; outline: none; }
-input:focus { border-color: var(--green); }
-button { display: inline-block; min-width: 102px; height: 34px; padding: 1px 10px; background: #fff; border: 1px solid var(--green-dark);
-  border-radius: 2px; color: var(--green-dark); font: 13px "Open Sans", "Segoe UI", Arial, sans-serif; cursor: pointer; outline: none; }
-button:hover { background: rgba(139, 182, 59, 0.1); } button:active { background: rgba(139, 182, 59, 0.2); }
-button.action { background: var(--green); color: #fff; border-color: var(--green-dark); }
-button.action:hover { background: var(--green-hover); } button.action:active { background: var(--green-active); }
-button.assertive { border-color: var(--red-dark); color: var(--red-dark); }
-button.assertive:hover { background: rgba(225, 89, 64, 0.1); }
-button:disabled { cursor: default; border-color: var(--grey); color: var(--grey); background: #fff; }
+input[type=text], input[type=password] { height: 36px; width: 100%; padding: 0 10px; border: 1px solid var(--anth40); background: var(--white);
+  color: var(--anthracite); font: inherit; outline: none; }
+input:focus, textarea:focus { border-color: var(--anthracite); box-shadow: 0 0 0 2px var(--green); }
+button { display: inline-block; min-width: 110px; height: 36px; padding: 0 16px; background: var(--white); border: 1px solid var(--anthracite);
+  color: var(--anthracite); font: inherit; cursor: pointer; outline: none; }
+button:hover { background: var(--light); } button:active { background: var(--anth15); }
+button:focus-visible { box-shadow: 0 0 0 2px var(--green); }
+button.action { background: var(--green); border-color: var(--green); color: var(--anthracite); font-weight: 700; }
+button.action:hover { background: var(--green-hover); border-color: var(--green-hover); } button.action:active { background: var(--green-active); }
+button.assertive { border-color: var(--red); color: var(--red); }
+button.assertive:hover { background: var(--red-bg); }
+button:disabled, button.action:disabled { cursor: default; border-color: var(--anth15); color: var(--anth40); background: var(--white); font-weight: 400; }
 
 /* tables */
 table.grid { border-collapse: collapse; width: 100%; }
-table.grid th, table.grid td { text-align: left; padding: 0 9px; height: 34px; border-bottom: 1px solid var(--line); vertical-align: middle; }
-table.grid th { font-weight: 600; background: var(--panel); white-space: nowrap; }
+table.grid th, table.grid td { text-align: left; padding: 0 12px; height: 40px; border-bottom: 1px solid var(--light); vertical-align: middle; }
+table.grid th { font-weight: 700; white-space: nowrap; }
 table.grid td.num, table.grid th.num { text-align: right; font-variant-numeric: tabular-nums; }
 table.grid tr:last-child td { border-bottom: none; }
-pre.file { margin: 0; padding: 9px; max-height: 520px; overflow: auto; font: 12px/1.45 Consolas, "DejaVu Sans Mono", monospace; white-space: pre; }
 
-/* ---- status area (bottom bar) ---- */
-#status-area { flex: none; height: 50px; background: var(--bar); border-top: 1px solid var(--line);
-  display: flex; align-items: center; padding: 0 17px; gap: 17px; }
-#clock { line-height: 18px; min-width: 70px; }
+/* profile editor */
+textarea.file { display: block; width: calc(100% - 24px); margin: 8px 12px; height: 460px; padding: 10px; resize: vertical;
+  border: 1px solid var(--anth40); color: var(--anthracite); background: var(--white); outline: none; tab-size: 2;
+  font: 13px/1.45 Consolas, "DejaVu Sans Mono", "Courier New", monospace; white-space: pre; overflow: auto; }
+.editor-state { align-self: center; color: var(--anth70); }
+.editor-state.dirty { color: var(--amber); font-weight: 700; }
+
+/* ---- status bar ---- */
+#status-area { flex: none; height: 52px; background: var(--light); border-top: 1px solid var(--anth15);
+  display: flex; align-items: center; padding: 0 24px; gap: 20px; }
+#clock { line-height: 18px; min-width: 80px; font-variant-numeric: tabular-nums; }
 .led-table { display: flex; }
-.led-item { text-align: center; text-transform: uppercase; font-size: 11px; cursor: default; min-width: 40px; }
-.led { margin: 0 9px; width: 13px; height: 13px; border-radius: 50%; border: 1px solid rgb(120, 120, 120); background: rgb(230, 230, 230); }
-.led.green { background: rgb(185, 214, 129); } .led.red { background: rgb(232, 127, 108); }
-.led.yellow { background: rgb(238, 196, 58); }
-#status-text { margin-left: auto; color: rgb(120, 120, 120); font-size: 11px; }
-#login-btn.on { border-color: var(--green-dark); color: var(--green-dark); background: rgba(139, 182, 59, 0.15); }
+.led-item { text-align: center; text-transform: uppercase; font-size: 11px; cursor: default; min-width: 44px; color: var(--anth70); }
+.led { margin: 0 auto 2px; width: 14px; height: 14px; border-radius: 50%; border: 1px solid var(--anth40); background: var(--white); }
+.led.green { background: var(--green); border-color: var(--green-active); }
+.led.red { background: var(--red); border-color: var(--red); }
+.led.yellow { background: var(--amber-led); border-color: var(--amber); }
+#status-text { margin-left: auto; color: var(--anth70); font-size: 12px; }
 /* functions that need the login: only shown while logged in */
 body:not(.logged-in) .auth-only { display: none !important; }
 body.logged-in .anon-only { display: none !important; }
 
 /* login dialog */
-#login-dlg { position: fixed; inset: 0; background: rgba(0, 0, 0, .35); display: none; align-items: center; justify-content: center; z-index: 50; }
+#login-dlg { position: fixed; inset: 0; background: rgba(31, 40, 55, .45); display: none; align-items: center; justify-content: center; z-index: 50; }
 #login-dlg.open { display: flex; }
-#login-dlg form { background: #fff; padding: 18px 22px; width: 320px; max-width: calc(100% - 32px); box-shadow: 0 4px 18px rgba(0, 0, 0, .3); }
-#login-dlg h3 { margin: 0 0 6px; } #login-dlg p { margin: 0 0 12px; color: rgb(100, 100, 100); font-size: 12px; }
-#login-dlg label { display: block; margin: 8px 0 3px; }
-#login-dlg .buttons { padding: 0; margin-top: 14px; }
-#login-err { color: rgb(200, 60, 40); min-height: 1em; margin-top: 8px; font-size: 12px; }
+#login-dlg form { background: var(--white); padding: 24px; width: 340px; max-width: calc(100% - 32px); border-top: 4px solid var(--green);
+  box-shadow: 0 6px 24px rgba(31, 40, 55, .3); }
+#login-dlg h3 { margin: 0 0 6px; font-size: 20px; } #login-dlg p { margin: 0 0 12px; color: var(--anth70); font-size: 13px; }
+#login-dlg label { display: block; margin: 10px 0 4px; color: var(--anth70); }
+#login-dlg .buttons { padding: 0; margin-top: 18px; }
+#login-err { color: var(--red); min-height: 1em; margin-top: 8px; font-size: 13px; }
 
 @media (max-width: 900px) {
-  #main-header { padding-left: 120px; } #logo { left: 12px; }
-  #main-menu .tab-item { width: 92px; } #main-menu .tab-item.active { width: 108px; }
-  .sub-menu { width: 170px; }
+  #brand-bar { padding-left: 12px; } .brand-sep { margin: 0 10px; }
+  .brand-app .light { display: none; }
+  #main-menu .tab-item a { padding: 0 12px; }
+  .sub-menu { width: 180px; }
   #action-bar label { display: none; }
 }
 </style>
@@ -153,9 +163,11 @@ body.logged-in .anon-only { display: none !important; }
 <body>
 <div id="frame">
   <div id="main-header">
-    <div id="logo"><img src="/wbm/images/wago-logo.svg" alt="" onerror="this.parentNode.classList.add('noimg')"><span class="text">WAGO</span></div>
-    <ul id="main-menu"></ul>
-    <ul id="action-bar">
+    <div id="brand-bar">
+      <div id="logo"><img src="logo.svg" alt="WAGO" onerror="if(!this.dataset.wbm){this.dataset.wbm=1;this.src='/wbm/images/wago-logo.svg'}else this.parentNode.classList.add('noimg')"><span class="text">WAGO</span></div>
+      <span class="brand-sep"></span><span class="brand-country">Netherlands</span>
+      <span class="brand-sep"></span><span class="brand-app">WALM gateway <span class="light">virtual wallbox</span></span>
+      <ul id="action-bar">
       <li><a id="login-btn" role="button" tabindex="0" title="Log in"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M19.14 12.94c.04-.3.06-.61.06-.94 0-.32-.02-.64-.07-.94l2.03-1.58a.49.49 0 0 0 .12-.61l-1.92-3.32a.488.488 0 0 0-.59-.22l-2.39.96c-.5-.38-1.03-.7-1.62-.94l-.36-2.54a.484.484 0 0 0-.48-.41h-3.84c-.24 0-.43.17-.47.41l-.36 2.54c-.59.24-1.13.57-1.62.94l-2.39-.96c-.22-.08-.47 0-.59.22L2.74 8.87c-.12.21-.08.47.12.61l2.03 1.58c-.05.3-.09.63-.09.94s.02.64.07.94l-2.03 1.58a.49.49 0 0 0-.12.61l1.92 3.32c.12.22.37.29.59.22l2.39-.96c.5.38 1.03.7 1.62.94l.36 2.54c.05.24.24.41.48.41h3.84c.24 0 .44-.17.47-.41l.36-2.54c.59-.24 1.13-.56 1.62-.94l2.39.96c.22.08.47 0 .59-.22l1.92-3.32c.12-.22.07-.47-.12-.61l-2.01-1.58zM12 15.6c-1.98 0-3.6-1.62-3.6-3.6s1.62-3.6 3.6-3.6 3.6 1.62 3.6 3.6-1.62 3.6-3.6 3.6z"/></svg></a>
         <label id="login-label">Login</label></li>
       <li><a id="walm-link" href="/" target="_blank" rel="noopener" title="WAGO Load Management">
@@ -165,6 +177,8 @@ body.logged-in .anon-only { display: none !important; }
         <svg viewBox="0 0 24 24" fill="currentColor"><path d="M19 19H5V5h7V3H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14c1.1 0 2-.9 2-2v-7h-2v7zM14 3v2h3.59l-9.83 9.83 1.41 1.41L19 6.41V10h2V3h-7z"/></svg></a>
         <label>WBM</label></li>
     </ul>
+    </div>
+    <ul id="main-menu"></ul>
   </div>
 
   <div id="main-content">
@@ -174,13 +188,13 @@ body.logged-in .anon-only { display: none !important; }
 
       <!-- Status / Charge Point -->
       <div class="wbm-page" id="page-status-cp">
-        <h2 class="page">Charge Point</h2>
+        <h2 class="page">Charge point</h2>
         <p class="note">What Load Management sees: the charger translated to the WAGO Virtual Wallbox register map.</p>
-        <div class="form collapsible"><span class="title">Charge Point</span><div class="body">
+        <div class="form collapsible"><span class="title">Charge point</span><div class="body">
           <div class="field"><label>State</label><div class="control big" id="cp-state">–</div></div>
           <div class="field"><label>Vehicle</label><div class="control" id="cp-veh">–</div></div>
           <div class="field"><label>Availability (124)</label><div class="control" id="cp-avail">–</div></div>
-          <div class="field"><label>Signalled Current (706)</label><div class="control value" id="cp-sig">–</div></div>
+          <div class="field"><label>Signalled current (706)</label><div class="control value" id="cp-sig">–</div></div>
           <div class="field"><label>Power</label><div class="control value" id="cp-power">–</div></div>
         </div></div>
       </div>
@@ -192,12 +206,12 @@ body.logged-in .anon-only { display: none !important; }
           <div class="field"><label>Charger</label><div class="control" id="c-name">–</div></div>
           <div class="field"><label>Address</label><div class="control value" id="c-addr">–</div></div>
           <div class="field"><label>Connection</label><div class="control" id="c-conn">–</div></div>
-          <div class="field"><label>Last Good Poll</label><div class="control value" id="c-last">–</div></div>
-          <div class="field"><label>Last Error</label><div class="control" id="c-err">–</div></div>
+          <div class="field"><label>Last good poll</label><div class="control value" id="c-last">–</div></div>
+          <div class="field"><label>Last error</label><div class="control" id="c-err">–</div></div>
         </div></div>
         <div class="form collapsible"><span class="title">Charging</span><div class="body">
-          <div class="field"><label>Charger State (raw)</label><div class="control value" id="c-raw">–</div></div>
-          <div class="field"><label>Setpoint to Charger</label><div class="control value" id="c-sp">–</div></div>
+          <div class="field"><label>Charger state (raw)</label><div class="control value" id="c-raw">–</div></div>
+          <div class="field"><label>Setpoint to charger</label><div class="control value" id="c-sp">–</div></div>
         </div></div>
       </div>
 
@@ -207,13 +221,13 @@ body.logged-in .anon-only { display: none !important; }
         <p class="note" id="lm-hint" style="display:none">Load Management has not polled the gateway yet. In WALM, set the
           charging point (type WAGO Virtual Wallbox) to address <b id="lm-addr">127.0.0.1:5020</b>.</p>
         <div class="form collapsible"><span class="title">Connection</span><div class="body">
-          <div class="field"><label>Listening On</label><div class="control value" id="l-bind">–</div></div>
-          <div class="field"><label>Last Request</label><div class="control value" id="l-last">–</div></div>
+          <div class="field"><label>Listening on</label><div class="control value" id="l-bind">–</div></div>
+          <div class="field"><label>Last request</label><div class="control value" id="l-last">–</div></div>
         </div></div>
         <div class="form collapsible"><span class="title">Limits</span><div class="body">
-          <div class="field"><label>HEMS Limit (1000)</label><div class="control value" id="l-hems">–</div></div>
-          <div class="field"><label>Operator Limit (134)</label><div class="control value" id="l-op">–</div></div>
-          <div class="field"><label>Minimum Current (712)</label><div class="control value" id="l-min">–</div></div>
+          <div class="field"><label>HEMS limit (1000)</label><div class="control value" id="l-hems">–</div></div>
+          <div class="field"><label>Operator limit (134)</label><div class="control value" id="l-op">–</div></div>
+          <div class="field"><label>Minimum current (712)</label><div class="control value" id="l-min">–</div></div>
           <div class="field"><label>Watchdog (131 / 132)</label><div class="control value" id="l-wd">–</div></div>
         </div></div>
       </div>
@@ -223,7 +237,7 @@ body.logged-in .anon-only { display: none !important; }
         <h2 class="page">Measurements</h2>
         <div class="form collapsible"><span class="title">Totals</span><div class="body">
           <div class="field"><label>Power</label><div class="control big" id="m-ptot">–</div></div>
-          <div class="field"><label>Energy Total</label><div class="control big" id="m-etot">–</div></div>
+          <div class="field"><label>Energy total</label><div class="control big" id="m-etot">–</div></div>
         </div></div>
         <div class="form wide"><span class="title">Phases</span><div class="body">
           <table class="grid"><thead><tr><th></th><th class="num">L1</th><th class="num">L2</th><th class="num">L3</th></tr></thead><tbody>
@@ -236,23 +250,32 @@ body.logged-in .anon-only { display: none !important; }
 
       <!-- Configuration / Charger Profile -->
       <div class="wbm-page" id="page-config-profile">
-        <h2 class="page">Charger Profile</h2>
-        <p class="note">The profile is the Modbus register list of the connected charger. An uploaded profile is checked
-          before it is saved (the old one is kept as .bak) and takes effect after a restart of the gateway.</p>
-        <p class="note anon-only">Log in (gear button at the top right) to download, upload or restart.</p>
+        <h2 class="page">Charger profile</h2>
+        <p class="note">The profile is the Modbus register list of the connected charger. Read the active profile or
+          select a file, edit it below and write it to the gateway. It is checked before it is saved (the old one is kept
+          as .bak) and takes effect after a restart of the gateway.</p>
+        <p class="note anon-only">Log in (gear button at the top right) to read, edit, write or restart.</p>
         <p class="error auth-only default-pw" style="display:none">You are logged in with the default password: change it on Configuration &gt; Login.</p>
-        <div class="form collapsible"><span class="title">Profile</span><div class="body">
+        <div class="form collapsible"><span class="title">Active profile</span><div class="body">
           <div class="field"><label>File</label><div class="control value" id="pf-file">–</div></div>
           <div class="field"><label>Charger</label><div class="control" id="pf-name">–</div></div>
           <div class="field"><label>Address</label><div class="control value" id="pf-addr">–</div></div>
-          <div class="buttons auth-only">
-            <button id="b-dl">Download</button>
+          <div class="buttons auth-only"><button id="b-rs" class="assertive">Restart gateway</button></div>
+        </div></div>
+        <div class="form wide auth-only"><span class="title">Profile editor</span><div class="body">
+          <div class="buttons">
+            <span class="editor-state" id="ed-state">–</span><span class="spacer"></span>
+            <button id="b-read" title="Load the active profile from the gateway into the editor">Read configuration</button>
             <input id="up" type="file" accept=".toml,text/plain" hidden>
-            <button id="b-ul" class="action">Upload</button>
-            <button id="b-rs" class="assertive">Restart Gateway</button>
+            <button id="b-sel" title="Load a profile file from this PC into the editor (nothing is sent yet)">Select file</button>
+            <button id="b-dl" title="Save the editor content as a file on this PC">Download</button>
+          </div>
+          <textarea class="file" id="ed" spellcheck="false" autocomplete="off" wrap="off" aria-label="Profile editor"></textarea>
+          <div class="buttons">
+            <button id="b-chk" title="Check the editor content on the gateway; nothing is saved">Check</button>
+            <button id="b-wr" class="action" title="Check and save the editor content as the active profile">Write configuration</button>
           </div>
         </div></div>
-        <div class="form wide auth-only"><span class="title">Content</span><div class="body"><pre class="file" id="pf-text">–</pre></div></div>
       </div>
 
       <!-- Configuration / Login -->
@@ -260,10 +283,10 @@ body.logged-in .anon-only { display: none !important; }
         <h2 class="page">Login</h2>
         <p class="note" id="sstate">–</p>
         <p class="note anon-only">Log in (gear button at the top right) to change the login.</p>
-        <form class="form collapsible auth-only" id="sform" autocomplete="off"><span class="title">Dashboard Login</span><div class="body">
+        <form class="form collapsible auth-only" id="sform" autocomplete="off"><span class="title">Dashboard login</span><div class="body">
           <div class="field"><label for="suser">User</label><div class="control"><input type="text" id="suser" maxlength="32" autocomplete="username"></div></div>
-          <div class="field"><label for="spw">New Password</label><div class="control"><input type="password" id="spw" maxlength="128" autocomplete="new-password" placeholder="empty = keep the current one"></div></div>
-          <div class="field"><label for="spw2">Repeat Password</label><div class="control"><input type="password" id="spw2" maxlength="128" autocomplete="new-password"></div></div>
+          <div class="field"><label for="spw">New password</label><div class="control"><input type="password" id="spw" maxlength="128" autocomplete="new-password" placeholder="empty = keep the current one"></div></div>
+          <div class="field"><label for="spw2">Repeat password</label><div class="control"><input type="password" id="spw2" maxlength="128" autocomplete="new-password"></div></div>
           <div class="buttons"><button type="submit" class="action">Submit</button></div>
         </div></form>
         <p class="note">Stored on the controller in dashboard-login.toml (next to gateway.toml), the password only as a hash.
@@ -286,7 +309,7 @@ body.logged-in .anon-only { display: none !important; }
 </div>
 <div id="login-dlg"><form id="login-form" autocomplete="on">
   <h3>Login</h3>
-  <p>Download, Upload, Restart and the login settings need the login.</p>
+  <p>Reading and writing the charger profile, restarting and the login settings need the login.</p>
   <label for="login-user">User</label><input type="text" id="login-user" autocomplete="username">
   <label for="login-pw">Password</label><input type="password" id="login-pw" autocomplete="current-password">
   <div id="login-err"></div>
@@ -302,9 +325,9 @@ const ago = s => s == null ? "never" : s < 2 ? "just now" : s < 120 ? Math.round
 
 // ---- navigation: main menu (tabs) and sub menu, like the WBM ------------------
 const MENU = [
-  { id: "status", title: "Status", pages: [["cp", "Charge Point"], ["charger", "Charger"], ["lm", "Load Management"]] },
+  { id: "status", title: "Status", pages: [["cp", "Charge point"], ["charger", "Charger"], ["lm", "Load Management"]] },
   { id: "meter", title: "Meter", pages: [["values", "Measurements"]] },
-  { id: "config", title: "Configuration", pages: [["profile", "Charger Profile"], ["login", "Login"]] },
+  { id: "config", title: "Configuration", pages: [["profile", "Charger profile"], ["login", "Login"]] },
 ];
 let tab = "status", page = "cp";
 $("main-menu").innerHTML = MENU.map(m =>
@@ -346,7 +369,7 @@ function setAuth(a, user) {
 }
 function showLogin() {
   document.body.classList.toggle("logged-in", !!auth);
-  led("led-login", auth ? "green" : "yellow", auth ? `Logged in as ${authUser}` : "Not logged in: Download, Upload and Restart are hidden");
+  led("led-login", auth ? "green" : "yellow", auth ? `Logged in as ${authUser}` : "Not logged in: profile editor and restart are hidden");
   $("login-label").textContent = auth ? "Logout" : "Login";
   $("login-btn").classList.toggle("on", !!auth);
   $("login-btn").title = auth ? `Logged in as ${authUser}: click to log out` : "Log in";
@@ -408,32 +431,73 @@ $("sform").addEventListener("submit", async e => {
   } catch (err) { msg(err.message); }
 });
 
-// ---- charger profile ------------------------------------------------------------
-let pfile = "profile.toml", restarting = false;
-async function loadProfile() {
-  if (!auth) return;
-  try { $("pf-text").textContent = await api("GET", "api/profile"); } catch (e) { $("pf-text").textContent = e.message; }
+// ---- charger profile: editor ---------------------------------------------------
+// The editor holds a working copy. "Read configuration" loads the active profile from the gateway,
+// "Select file" loads a file from this PC; nothing is sent until "Write configuration".
+let pfile = "profile.toml", restarting = false, edSource = "", edSaved = "";
+function edState() {
+  const dirty = $("ed").value !== edSaved;
+  $("ed-state").textContent = !edSource ? "Empty: read the configuration or select a file"
+    : edSource + (dirty ? " · modified, not written" : " · unchanged");
+  $("ed-state").className = "editor-state" + (dirty ? " dirty" : "");
+  $("b-wr").disabled = !$("ed").value.trim();
+  $("b-chk").disabled = !$("ed").value.trim();
 }
-$("b-dl").addEventListener("click", async () => {
-  try {
-    const t = await api("GET", "api/profile");
-    const a = document.createElement("a"); a.href = URL.createObjectURL(new Blob([t], { type: "text/plain" }));
-    a.download = pfile; document.body.appendChild(a); a.click(); a.remove(); msg("Downloaded " + pfile, true);
-  } catch (e) { msg(e.message); }
+function edLoad(text, source, saved) {
+  $("ed").value = text; edSource = source; edSaved = saved === undefined ? text : saved; edState();
+}
+const edDirty = () => !!edSource && $("ed").value !== edSaved;
+async function loadProfile(force) {
+  if (!auth || (edDirty() && !force)) return;              // never overwrite unsaved edits
+  try { edLoad(await api("GET", "api/profile"), "Active profile " + pfile); } catch (e) { msg(e.message); }
+}
+$("ed").addEventListener("input", edState);
+$("ed").addEventListener("keydown", e => {                // Tab inserts two spaces instead of leaving the editor
+  if (e.key !== "Tab" || e.shiftKey || e.ctrlKey || e.altKey) return;
+  e.preventDefault(); document.execCommand("insertText", false, "  ") || $("ed").setRangeText("  ", $("ed").selectionStart, $("ed").selectionEnd, "end");
+  edState();
 });
-$("b-ul").addEventListener("click", () => $("up").click());
+window.addEventListener("beforeunload", e => { if (edDirty()) { e.preventDefault(); e.returnValue = ""; } });
+$("b-read").addEventListener("click", async () => {
+  if (edDirty() && !confirm("Discard the changes in the editor and read the active profile?")) return;
+  await loadProfile(true); msg("Active profile read into the editor.", true);
+});
+$("b-sel").addEventListener("click", () => {
+  if (edDirty() && !confirm("Discard the changes in the editor and load a file?")) return;
+  $("up").click();
+});
 $("up").addEventListener("change", async () => {
   const inp = $("up"), f = inp.files[0];
-  inp.value = "";                                      // picking the same file again fires change again
+  inp.value = "";                                          // picking the same file again fires change again
   if (!f) return;
-  if (!confirm(`Replace charger profile ${pfile} with ${f.name}?\nThe current file is kept as .bak. Takes effect after a restart.`)) return;
-  try { msg(await api("POST", "api/profile", await f.text()), true); loadProfile(); } catch (e) { msg(e.message); }
+  if (f.size > 60000) return msg(`${f.name} is too large for a charger profile (${f.size} bytes).`);
+  edLoad(await f.text(), "File " + f.name, "");            // not written yet: counts as modified
+  msg(`${f.name} loaded into the editor: check it and press Write configuration to use it.`, true);
 });
-$("b-rs").addEventListener("click", async () => {
-  if (!confirm("Restart the gateway?\nLoad Management loses the charger for a few seconds.")) return;
+$("b-dl").addEventListener("click", () => {
+  const name = edSource.startsWith("File ") ? edSource.slice(5) : pfile;
+  const a = document.createElement("a"); a.href = URL.createObjectURL(new Blob([$("ed").value], { type: "text/plain" }));
+  a.download = name; document.body.appendChild(a); a.click(); a.remove(); msg("Downloaded " + name, true);
+});
+$("b-chk").addEventListener("click", async () => {
+  try { msg(await api("POST", "api/profile/check", $("ed").value), true); } catch (e) { msg(e.message); }
+});
+$("b-wr").addEventListener("click", async () => {
+  if (!confirm(`Write the editor content as charger profile ${pfile}?\nIt is checked first; the current file is kept as .bak. Takes effect after a restart.`)) return;
+  try {
+    msg(await api("POST", "api/profile", $("ed").value), true);
+    edLoad($("ed").value, "Active profile " + pfile + " (written, restart to apply)");
+    if (confirm("Profile written. Restart the gateway now to apply it?\nLoad Management loses the charger for a few seconds.")) restart();
+  } catch (e) { msg(e.message); }
+});
+async function restart() {
   try { await api("POST", "api/restart"); restarting = true; msg("Restarting… the page reconnects automatically.", true); }
   catch (e) { msg(e.message); }
+}
+$("b-rs").addEventListener("click", () => {
+  if (confirm("Restart the gateway?\nLoad Management loses the charger for a few seconds.")) restart();
 });
+edState();
 
 // ---- status ---------------------------------------------------------------------
 const OCPP = { 0: ["Available", "ok-text"], 2: ["Reserved", ""], 3: ["Unavailable", "warn-text"], 4: ["Faulted", "bad-text"],
@@ -451,7 +515,7 @@ async function refresh() {
   }
   const g = d.regs, c = d.charger, lr = d.lm.last_request_s_ago;
   if (cfgUser !== d.config.user || defaultPw !== d.config.default_password) { cfgUser = d.config.user; defaultPw = d.config.default_password; showLogin(); }
-  if (restarting && d.uptime_s < 60) { restarting = false; msg("Gateway restarted.", true); if (tab === "config") loadProfile(); }
+  if (restarting && d.uptime_s < 60) { restarting = false; msg("Gateway restarted.", true); }
   pfile = d.config.profile_file;
   const t = new Date(d.time_ms);
   $("clock").innerHTML = `${esc(t.toLocaleDateString())}<br>${esc(t.toLocaleTimeString())}`;

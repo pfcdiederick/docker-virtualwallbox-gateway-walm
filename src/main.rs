@@ -53,6 +53,7 @@ async fn main() -> Result<()> {
             profile_path: cfg.downstream.profile.clone(),
             downstream_cfg: cfg.downstream.clone(),
             login: auth::Login::load(login_path(&cfg_path), d.admin_password.clone()),
+            logo_path: login_path(&cfg_path).replace("dashboard-login.toml", "wago-logo.svg"),
         });
         let img = img.clone();
         tokio::spawn(async move {

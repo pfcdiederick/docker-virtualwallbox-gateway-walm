@@ -49,8 +49,19 @@ if [[ $MODE != --no-build ]]; then
     docker builder prune -af >/dev/null 2>&1 || true
 fi
 docker image inspect "$IMAGE" >/dev/null || { echo "image $IMAGE not found"; exit 1; }
+# The CC100 has ~500 MB RAM and no swap, shared with CODESYS and Load Management: an OOM kill
+# hits the biggest process (Load Management). So check the free memory first, copy the image
+# as a file (a slow network then does not keep docker busy) and load it with low priority.
+avail=$($SSH "sed -n 's/^MemAvailable: *\([0-9]*\) kB/\1/p' /proc/meminfo")
+say "free memory on $PFC: $((avail / 1024)) MB"
+if (( avail < ${MIN_FREE_KB:-122880} )); then
+    echo "!!! less than $(( ${MIN_FREE_KB:-122880} / 1024 )) MB available on $PFC: not deploying (MIN_FREE_KB to override)"
+    exit 1
+fi
 say "copying $IMAGE to $PFC"
-docker save "$IMAGE" | $SSH docker load | sed 's/^/    /'
+TARFILE=/home/vwb-gateway-image.tar.gz
+docker save "$IMAGE" | gzip -6 | $SSH "cat > $TARFILE.part && mv $TARFILE.part $TARFILE"
+$SSH "nice -n 19 docker load -i $TARFILE; rc=\$?; rm -f $TARFILE; exit \$rc" | sed 's/^/    /'
 
 # ---- 2. config folder (never overwritten) ------------------------------------------------
 if $SSH "test -f $VWB_DIR/config/gateway.toml"; then
