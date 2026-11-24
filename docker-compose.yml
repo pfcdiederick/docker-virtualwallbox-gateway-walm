@@ -2,7 +2,7 @@ services:
   vwb-gateway:
     build: .
     platform: linux/arm/v7   # binary is armv7 (CC100); run this compose file on the CC100
-    image: vwb-gateway:0.14
+    image: vwb-gateway:0.15
     container_name: vwb-gateway
     restart: unless-stopped
     # Host networking so the gateway can reach the downstream charger directly

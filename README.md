@@ -62,17 +62,12 @@ energy/duration accumulation registers (705/709/716-719), DLM block (600-635),
 error-mask layouts (105-112), 2nd connector (:503).
 
 ## Dashboard
-Built into the binary (no extra container, no dependencies). Structure like the controller's
-Web-based Management (and the kbus-manager): tabs at the top, page menu on the left, collapsible
-panels, status bar with date/time and LEDs (GW, CHG, LM, Login). Look per the
-[WAGO corporate design](https://www.wago.com/global/corporatedesign) for functional touchpoints:
-white base, WAGO Green `#6EC800` only as accent (never as text colour on light backgrounds, no
-white text on green), text in Anthracite `#1F2837`, Light Gray `#EFF0F1` to separate sections,
-font WAGO Connective with Arial as fallback, sentence case. Header: logo │ **Netherlands**,
-then the WBM-style tabs on the same row. Error/warning colours and button shapes are not in
-the public guide (they are in WAGO's Figma core library) and are own choices.
+Built into the binary (no extra container, no dependencies), with the layout, font and colours of
+the controller's Web-based Management (and the kbus-manager): tabs at the top, page menu on the
+left, collapsible panels, status bar with date/time and LEDs (GW, CHG, LM, Login). Top left:
+logo │ **Netherlands** (in the WAGO font WAGO Connective, fallback Arial); the tabs start right of it.
 
-**Logo.** The guide allows only the original logo files. Put the official `wago-logo.svg` in the
+**Logo.** The guide allows only the original logo files. Optionally put the official `wago-logo.svg` in the
 config folder (`/root/vwb/config/wago-logo.svg`); without it the page shows the controller's WBM
 logo (firmware 04.04 still has the previous logo, green `#8BB63A`).
 
@@ -113,11 +108,11 @@ deploy/install-lighttpd.sh 192.168.178.222 --remove # remove
 | Configuration | *Charger profile* 🔒: active profile, Restart gateway, profile editor; *Login*: user and password |
 
 **Profile editor** (*Configuration › Charger profile*, login): edit the charger profile in the browser.
-- **Read configuration** loads the active profile from the gateway into the editor;
-- **Select file** loads a file from the PC into the editor (nothing is sent yet);
+- **Read Configuration** loads the active profile from the gateway into the editor;
+- **Select File** loads a file from the PC into the editor (nothing is sent yet);
 - **Download** saves the editor content as a file on the PC;
 - **Check** lets the gateway validate the editor content, nothing is saved (`POST /api/profile/check`);
-- **Write configuration** validates and saves it (old one kept as `.bak`), then offers a restart.
+- **Write Configuration** validates and saves it (old one kept as `.bak`), then offers a restart.
 The editor warns before unsaved changes are overwritten or the page is left.
 
 **Login.** Download, Upload, Restart and changing the login always need the login; the status
@@ -138,7 +133,7 @@ section to disable it.
 **Configuration › Charger profile** (editor, Restart) — handles only the charger profile,
 i.e. the Modbus register list of the connected charger (`GET`/`POST /api/profile`), because
 that is what differs per charger. `gateway.toml` is not reachable from the dashboard.
-- *Write configuration* replaces it only if it parses as a charger profile and yields a charger IP; the previous
+- *Write Configuration* replaces it only if it parses as a charger profile and yields a charger IP; the previous
   version is kept as `<file>.bak`. Takes effect after a restart.
 - *Restart* exits the process; Docker's restart policy starts it again (~10-15 s on a CC100).
   After a restart, register 1000 starts at `default_hems_current_limit` until LM writes it again.
@@ -172,14 +167,14 @@ binary and ships it on a static busybox (for the start script) — the whole ima
 
 ```bash
 # on the build PC
-docker buildx build --platform linux/arm/v7 -t vwb-gateway:0.14 --load .
-docker save vwb-gateway:0.14 | ssh root@<cc100> docker load
+docker buildx build --platform linux/arm/v7 -t vwb-gateway:0.15 --load .
+docker save vwb-gateway:0.15 | ssh root@<cc100> docker load
 
 # on the CC100 (config dir copied to e.g. /root/vwb/config)
 docker run -d --name vwb-gateway --restart unless-stopped --network host \
   --pid host --cap-add SYS_ADMIN --cap-add SYS_PTRACE --cap-add SYS_CHROOT \
   --memory 32m --cpus 0.3 --log-opt max-size=1m --log-opt max-file=2 \
-  -v /root/vwb/config:/config vwb-gateway:0.14   # writable: dashboard upload
+  -v /root/vwb/config:/config vwb-gateway:0.15   # writable: dashboard upload
 ```
 Another config file: append its path to `docker run ... vwb-gateway:<version> /config/other.toml`.
 Edit the charger profile (`config/profiles/alfen_eve_pro.toml`) → set `host` (and `port`) to the Alfen's address before starting.
